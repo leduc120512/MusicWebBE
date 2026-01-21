@@ -10,6 +10,19 @@ public class SongResponse {
     private Integer duration;
     private Long playCount;
     private String lyrics;
+
+
+
+    private Long Idartist;
+    public String getFilePath() {
+        return filePath;
+    }
+
+    public void setFilePath(String filePath) {
+        this.filePath = filePath;
+    }
+
+    private String filePath;
     private String artistName;
     private String albumTitle;
     private String genreName;
@@ -35,7 +48,13 @@ public class SongResponse {
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public Long getIdartist() {
+        return Idartist;
+    }
 
+    public void setIdartist(Long idartist) {
+        Idartist = idartist;
+    }
     public String getCoverImage() { return coverImage; }
     public void setCoverImage(String coverImage) { this.coverImage = coverImage; }
 

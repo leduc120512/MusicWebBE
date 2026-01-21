@@ -92,6 +92,10 @@ public class AlbumService {
         response.setSongs(songResponses);
         return response;
     }
+    public Album getByIdOrThrow(Long id) {
+        return albumRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Album not found with id: " + id));
+    }
 
     private AlbumResponse convertToAlbumResponse(Album album) {
         AlbumResponse response = new AlbumResponse();

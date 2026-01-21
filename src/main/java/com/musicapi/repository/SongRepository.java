@@ -41,6 +41,13 @@ public interface SongRepository extends JpaRepository<Song, Long> {
     List<Song> findAllActiveSongs();
     @Query("SELECT s FROM Song s WHERE s.active = true ORDER BY s.playCount DESC")
     List<Song> findTop5ByPlayCount(Pageable pageable);
+    // SongRepository.java
+    @Query("SELECT s FROM Song s WHERE s.album.id = :albumId AND s.active = true ORDER BY s.createdAt DESC")
+    Page<Song> findByAlbumId(@Param("albumId") Long albumId, Pageable pageable);
+
+    // (tuỳ chọn) theo tên album
+    @Query("SELECT s FROM Song s WHERE s.album.title LIKE %:title% AND s.active = true ORDER BY s.createdAt DESC")
+    Page<Song> findByAlbumTitle(@Param("title") String title, Pageable pageable);
 
 
 }

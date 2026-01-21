@@ -133,31 +133,39 @@ public class SongController {
         }
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getSongById(
-            @PathVariable Long id,
-            @AuthenticationPrincipal UserPrincipal currentUser // null nếu không login
-    ) {
+    @GetMapping("/public/find-by-id")
+    public ResponseEntity<?> findById(@RequestParam("id") Long id,
+                                      @AuthenticationPrincipal UserPrincipal currentUser) {
         try {
-            // ✅ 1. Luôn tăng lượt nghe
-            songService.increasePlayCount(id);
-
-            // ✅ 2. Lấy thông tin bài hát
-            SongResponse song = songService.getSongById(id, currentUser);
-
-            // ✅ 3. Nếu có login thì ghi vào lịch sử
-            if (currentUser != null) {
-                songService.addPlayHistory(id, currentUser.getId());
-            }
-
-            return ResponseEntity.ok(ApiResponse.success("Song retrieved successfully", song));
+            SongResponse song = songService.getSongById(id, currentUser); // hoặc 1 hàm read-only
+            return ResponseEntity.ok(ApiResponse.success("Song retrieved", song));
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Song not found: " + e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error("Song not found: " + e.getMessage()));
+        }
+    }
+    @GetMapping(value = "/by-album/{albumId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> getSongsByAlbum(
+            @PathVariable("albumId") Long albumId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        try {
+            Page<SongResponse> songs = songService.getSongsByAlbumId(albumId, page, size, currentUser);
+            return ResponseEntity.ok(ApiResponse.success("Songs by album retrieved successfully", songs));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Error retrieving songs: " + e.getMessage()));
         }
     }
 
-
+    // (tuỳ chọn) public không cần đăng nhập
+    @GetMapping(value = "/public/by-album/{albumId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> getSongsByAlbumPublic(
+            @PathVariable("albumId") Long albumId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<SongResponse> songs = songService.getSongsByAlbumId(albumId, page, size, null);
+        return ResponseEntity.ok(ApiResponse.success("Songs by album retrieved successfully", songs));
+    }
 
     // Public endpoints (không cần authentication)
     @GetMapping("/public/latest")
@@ -172,6 +180,24 @@ public class SongController {
                     .body(ApiResponse.error("Error retrieving songs: " + e.getMessage()));
         }
     }
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getSongById(@PathVariable Long id,
+                                         @AuthenticationPrincipal UserPrincipal currentUser) {
+        try {
+            SongResponse song = songService.getSongById(id, currentUser); // lấy trước
+
+            try { songService.increasePlayCount(id); } catch (Exception ignored) {}
+
+            if (currentUser != null) {
+                try { songService.addPlayHistory(id, currentUser.getId()); } catch (Exception ignored) {}
+            }
+
+            return ResponseEntity.ok(ApiResponse.success("Song retrieved successfully", song));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Song not found: " + e.getMessage()));
+        }
+    }
+
     @PostMapping(value = "", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> createSong(
             @RequestParam("title") String title,
@@ -186,11 +212,12 @@ public class SongController {
     ) {
         try {
             String uploadDir = "D:/web nhac/duan1/upload";
+            Path dir = Paths.get(uploadDir);
+            Files.createDirectories(dir);
 
             // 🎵 Lưu file nhạc
-            String audioFileName = UUID.randomUUID() + "_" + audioFile.getOriginalFilename();
-            Path audioPath = Paths.get(uploadDir, audioFileName);
-            Files.createDirectories(audioPath.getParent());
+            String audioFileName = resolveUniqueFileName(dir, sanitizeFileName(audioFile.getOriginalFilename()));
+            Path audioPath = dir.resolve(audioFileName);
             Files.copy(audioFile.getInputStream(), audioPath, StandardCopyOption.REPLACE_EXISTING);
 
             // 🎼 Tạo song mới
@@ -199,17 +226,17 @@ public class SongController {
             song.setDescription(description);
             song.setLyrics(lyrics);
             song.setDuration(duration);
-            song.setFilePath("/upload/" + audioFileName); // đường dẫn để frontend dùng
+            song.setFilePath("/upload/" + audioFileName); // đường dẫn FE dùng
 
             // 🖼️ Lưu ảnh bìa (nếu có)
             if (coverImage != null && !coverImage.isEmpty()) {
-                String coverFileName = UUID.randomUUID() + "_" + coverImage.getOriginalFilename();
-                Path coverPath = Paths.get(uploadDir, coverFileName);
+                String coverFileName = resolveUniqueFileName(dir, sanitizeFileName(coverImage.getOriginalFilename()));
+                Path coverPath = dir.resolve(coverFileName);
                 Files.copy(coverImage.getInputStream(), coverPath, StandardCopyOption.REPLACE_EXISTING);
                 song.setCoverImage("/upload/" + coverFileName);
             }
 
-            // 📌 Gán genre và album (giả sử bạn có phương thức để set theo ID, hoặc fetch từ DB)
+            // 📌 Gán genre và album
             Genre genre = new Genre();
             genre.setId(genreId);
             song.setGenre(genre);
@@ -218,13 +245,12 @@ public class SongController {
             album.setId(albumId);
             song.setAlbum(album);
 
-            // ✅ Lưu song như cũ
+            // ✅ Lưu song
             SongResponse created = songService.createSong(song, currentUser);
             return ResponseEntity.ok(ApiResponse.success("Song created successfully", created));
 
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error creating song: " + e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error("Error creating song: " + e.getMessage()));
         }
     }
 
@@ -243,6 +269,8 @@ public class SongController {
     ) {
         try {
             String uploadDir = "D:/web nhac/duan1/upload";
+            Path dir = Paths.get(uploadDir);
+            Files.createDirectories(dir);
 
             // 🔎 Lấy bài hát hiện tại
             Song song = songService.getByIdOrThrow(id);
@@ -254,16 +282,16 @@ public class SongController {
 
             // 🎵 Nếu có file nhạc mới
             if (audioFile != null && !audioFile.isEmpty()) {
-                String audioFileName = UUID.randomUUID() + "_" + audioFile.getOriginalFilename();
-                Path audioPath = Paths.get(uploadDir, audioFileName);
+                String audioFileName = resolveUniqueFileName(dir, sanitizeFileName(audioFile.getOriginalFilename()));
+                Path audioPath = dir.resolve(audioFileName);
                 Files.copy(audioFile.getInputStream(), audioPath, StandardCopyOption.REPLACE_EXISTING);
                 song.setFilePath("/upload/" + audioFileName);
             }
 
             // 🖼️ Nếu có ảnh bìa mới
             if (coverImage != null && !coverImage.isEmpty()) {
-                String coverFileName = UUID.randomUUID() + "_" + coverImage.getOriginalFilename();
-                Path coverPath = Paths.get(uploadDir, coverFileName);
+                String coverFileName = resolveUniqueFileName(dir, sanitizeFileName(coverImage.getOriginalFilename()));
+                Path coverPath = dir.resolve(coverFileName);
                 Files.copy(coverImage.getInputStream(), coverPath, StandardCopyOption.REPLACE_EXISTING);
                 song.setCoverImage("/upload/" + coverFileName);
             }
@@ -293,7 +321,35 @@ public class SongController {
             return ResponseEntity.badRequest().body(ApiResponse.error("Error updating song: " + e.getMessage()));
         }
     }
+    private String sanitizeFileName(String original) {
+        if (original == null || original.isBlank()) return "file";
+        int dot = original.lastIndexOf('.');
+        String name = (dot > 0) ? original.substring(0, dot) : original;
+        String ext  = (dot > 0) ? original.substring(dot) : "";
 
+        // bỏ ký tự lạ, thay khoảng trắng -> '-', gộp nhiều '-' liên tiếp
+        name = name.replaceAll("[^a-zA-Z0-9-_\\.]", "-")
+                .replaceAll("-{2,}", "-")
+                .toLowerCase();
+        ext  = ext.replaceAll("[^a-zA-Z0-9\\.]", "").toLowerCase();
+
+        if (name.isBlank()) name = "file";
+        return name + ext;
+    }
+
+    private String resolveUniqueFileName(Path dir, String sanitized) {
+        int dot = sanitized.lastIndexOf('.');
+        String base = (dot > 0) ? sanitized.substring(0, dot) : sanitized;
+        String ext  = (dot > 0) ? sanitized.substring(dot) : "";
+
+        Path p = dir.resolve(sanitized);
+        int i = 1;
+        while (Files.exists(p)) {
+            p = dir.resolve(base + "-" + i + ext);
+            i++;
+        }
+        return p.getFileName().toString();
+    }
 
 
     @DeleteMapping("/{id}")

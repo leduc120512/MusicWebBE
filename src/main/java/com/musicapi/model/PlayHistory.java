@@ -1,5 +1,6 @@
 package com.musicapi.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.annotation.CreatedDate;
@@ -21,6 +22,7 @@ public class PlayHistory {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     @NotNull
+    @JsonIgnore // Ngăn trả user → playHistory → user → ...
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)

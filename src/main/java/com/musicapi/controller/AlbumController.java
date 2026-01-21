@@ -10,6 +10,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/albums")
@@ -31,30 +38,110 @@ public class AlbumController {
                     .body(ApiResponse.error("Error retrieving albums: " + e.getMessage()));
         }
     }
-    @PostMapping
+    @PostMapping(value = "", consumes = "multipart/form-data")
     public ResponseEntity<?> createAlbum(
-            @RequestBody Album album,
-            @AuthenticationPrincipal UserPrincipal currentUser) {
+            @RequestParam("title") String title,
+            @RequestParam("description") String description,
+            @RequestParam(value = "coverImage", required = false) MultipartFile coverImage,
+            @AuthenticationPrincipal UserPrincipal currentUser
+    ) {
         try {
+            String uploadDir = "D:/web nhac/duan1/upload/uploadalbums";
+            Path dir = Paths.get(uploadDir);
+            Files.createDirectories(dir);
+
+            Album album = new Album();
+            album.setTitle(title);
+            album.setDescription(description);
+
+            // 📷 Lưu ảnh nếu có
+            if (coverImage != null && !coverImage.isEmpty()) {
+                String sanitized = sanitizeFileName(coverImage.getOriginalFilename());
+                String finalName = resolveUniqueFileName(dir, sanitized);
+
+                Path filePath = dir.resolve(finalName);
+                Files.copy(coverImage.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+                album.setCoverImage("/upload/uploadalbums/" + finalName); // đường dẫn frontend dùng
+            }
+
             Album savedAlbum = albumService.createAlbum(album, currentUser);
             return ResponseEntity.ok(ApiResponse.success("Album created", savedAlbum));
+
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Error creating album: " + e.getMessage()));
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error creating album: " + e.getMessage()));
         }
     }
 
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = "multipart/form-data")
     public ResponseEntity<?> updateAlbum(
             @PathVariable Long id,
-            @RequestBody Album album,
-            @AuthenticationPrincipal UserPrincipal currentUser) {
+            @RequestParam("title") String title,
+            @RequestParam("description") String description,
+            @RequestParam(value = "coverImage", required = false) MultipartFile coverImage,
+            @AuthenticationPrincipal UserPrincipal currentUser
+    ) {
         try {
-            Album updatedAlbum = albumService.updateAlbum(id, album, currentUser);
-            return ResponseEntity.ok(ApiResponse.success("Album updated", updatedAlbum));
+            String uploadDir = "D:/web nhac/duan1/upload/uploadalbums";
+            Path dir = Paths.get(uploadDir);
+            Files.createDirectories(dir);
+
+            Album album = albumService.getByIdOrThrow(id);
+
+            // 🎨 Nếu có ảnh mới
+            if (coverImage != null && !coverImage.isEmpty()) {
+                String sanitized = sanitizeFileName(coverImage.getOriginalFilename());
+                String finalName = resolveUniqueFileName(dir, sanitized);
+
+                Path filePath = dir.resolve(finalName);
+                Files.copy(coverImage.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+                album.setCoverImage("/upload/uploadalbums/" + finalName);
+            }
+
+            // 📝 Cập nhật thông tin khác
+            album.setTitle(title);
+            album.setDescription(description);
+
+            Album updated = albumService.updateAlbum(id, album, currentUser);
+            return ResponseEntity.ok(ApiResponse.success("Album updated", updated));
+
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Error updating album: " + e.getMessage()));
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error updating album: " + e.getMessage()));
         }
     }
+    private String sanitizeFileName(String original) {
+        if (original == null || original.isBlank()) return "file";
+        int dot = original.lastIndexOf('.');
+        String name = (dot > 0) ? original.substring(0, dot) : original;
+        String ext  = (dot > 0) ? original.substring(dot) : "";
+
+        // bỏ ký tự lạ, thay khoảng trắng -> '-', gộp nhiều '-'
+        name = name.replaceAll("[^a-zA-Z0-9-_\\.]", "-")
+                .replaceAll("-{2,}", "-")
+                .toLowerCase();
+        ext  = ext.replaceAll("[^a-zA-Z0-9\\.]", "").toLowerCase();
+
+        if (name.isBlank()) name = "file";
+        return name + ext;
+    }
+
+    private String resolveUniqueFileName(Path dir, String sanitized) {
+        int dot = sanitized.lastIndexOf('.');
+        String base = (dot > 0) ? sanitized.substring(0, dot) : sanitized;
+        String ext  = (dot > 0) ? sanitized.substring(dot) : "";
+
+        Path p = dir.resolve(sanitized);
+        int i = 1;
+        while (Files.exists(p)) {
+            p = dir.resolve(base + "-" + i + ext);
+            i++;
+        }
+        return p.getFileName().toString();
+    }
+
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteAlbum(

@@ -124,6 +124,18 @@ public class SongService {
         
         return convertToSongResponse(song, currentUser);
     }
+    // SongService.java
+    public Page<SongResponse> getSongsByAlbumId(Long albumId, int page, int size, UserPrincipal currentUser) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<Song> songs = songRepository.findByAlbumId(albumId, pageable);
+        return songs.map(song -> convertToSongResponse(song, currentUser));
+    }
+
+    public Page<SongResponse> getSongsByAlbumTitle(String title, int page, int size, UserPrincipal currentUser) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<Song> songs = songRepository.findByAlbumTitle(title, pageable);
+        return songs.map(song -> convertToSongResponse(song, currentUser));
+    }
 
     public  SongResponse convertToSongResponse(Song song, UserPrincipal currentUser) {
         SongResponse response = new SongResponse();
@@ -132,10 +144,11 @@ public class SongService {
         response.setDescription(song.getDescription());
         response.setCoverImage(song.getCoverImage());
         response.setLyrics(song.getLyrics()); // ✅ sửa lỗi ghi đè ở đây
-
+        response.setFilePath(song.getFilePath());
         response.setDuration(song.getDuration());
         response.setPlayCount(song.getPlayCount());
         response.setArtistName(song.getArtist().getFullName());
+        response.setIdartist(song.getArtist().getId());
         response.setAlbumTitle(song.getAlbum() != null ? song.getAlbum().getTitle() : null);
         response.setGenreName(song.getGenre() != null ? song.getGenre().getName() : null);
         response.setCreatedAt(song.getCreatedAt());
