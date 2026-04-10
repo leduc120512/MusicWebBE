@@ -1,6 +1,7 @@
 package com.musicapi.controller;
 
 import com.musicapi.dto.ApiResponse;
+import com.musicapi.dto.SongLyricsUpdateRequest;
 import com.musicapi.dto.SongResponse;
 import com.musicapi.model.Album;
 import com.musicapi.model.Genre;
@@ -57,6 +58,21 @@ public class SongController {
                     .body(ApiResponse.error("Error retrieving popular songs: " + e.getMessage()));
         }
     }
+
+    @GetMapping({"/me", "/my"})
+    public ResponseEntity<?> getMySongs(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        try {
+            Page<SongResponse> songs = songService.getMySongs(currentUser, page, size);
+            return ResponseEntity.ok(ApiResponse.success("My songs retrieved successfully", songs));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error retrieving my songs: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/public/search-suggestions")
     public ResponseEntity<?> getSearchSuggestions(@RequestParam(required = false) String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) {
@@ -122,6 +138,22 @@ public class SongController {
                     .body(ApiResponse.error("Error retrieving songs by genre: " + e.getMessage()));
         }
     }
+
+    @GetMapping("/by-album/{albumId}")
+    public ResponseEntity<?> getSongsByAlbum(
+            @PathVariable Long albumId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        try {
+            Page<SongResponse> songs = songService.getSongsByAlbum(albumId, page, size, currentUser);
+            return ResponseEntity.ok(ApiResponse.success("Songs by album retrieved successfully", songs));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error retrieving songs by album: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/public/top5-playcount")
     public ResponseEntity<?> getTop5PlayCountSongs() {
         try {
@@ -186,11 +218,12 @@ public class SongController {
     ) {
         try {
             String uploadDir = "D:/web nhac/duan1/upload";
+            Path dir = Paths.get(uploadDir);
+            Files.createDirectories(dir);
 
             // 🎵 Lưu file nhạc
-            String audioFileName = UUID.randomUUID() + "_" + audioFile.getOriginalFilename();
-            Path audioPath = Paths.get(uploadDir, audioFileName);
-            Files.createDirectories(audioPath.getParent());
+            String audioFileName = resolveUniqueFileName(dir, sanitizeFileName(audioFile.getOriginalFilename()));
+            Path audioPath = dir.resolve(audioFileName);
             Files.copy(audioFile.getInputStream(), audioPath, StandardCopyOption.REPLACE_EXISTING);
 
             // 🎼 Tạo song mới
@@ -199,17 +232,17 @@ public class SongController {
             song.setDescription(description);
             song.setLyrics(lyrics);
             song.setDuration(duration);
-            song.setFilePath("/upload/" + audioFileName); // đường dẫn để frontend dùng
+            song.setFilePath("/upload/" + audioFileName); // đường dẫn FE dùng
 
             // 🖼️ Lưu ảnh bìa (nếu có)
             if (coverImage != null && !coverImage.isEmpty()) {
-                String coverFileName = UUID.randomUUID() + "_" + coverImage.getOriginalFilename();
-                Path coverPath = Paths.get(uploadDir, coverFileName);
+                String coverFileName = resolveUniqueFileName(dir, sanitizeFileName(coverImage.getOriginalFilename()));
+                Path coverPath = dir.resolve(coverFileName);
                 Files.copy(coverImage.getInputStream(), coverPath, StandardCopyOption.REPLACE_EXISTING);
                 song.setCoverImage("/upload/" + coverFileName);
             }
 
-            // 📌 Gán genre và album (giả sử bạn có phương thức để set theo ID, hoặc fetch từ DB)
+            // 📌 Gán genre và album
             Genre genre = new Genre();
             genre.setId(genreId);
             song.setGenre(genre);
@@ -218,13 +251,12 @@ public class SongController {
             album.setId(albumId);
             song.setAlbum(album);
 
-            // ✅ Lưu song như cũ
+            // ✅ Lưu song
             SongResponse created = songService.createSong(song, currentUser);
             return ResponseEntity.ok(ApiResponse.success("Song created successfully", created));
 
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error creating song: " + e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error("Error creating song: " + e.getMessage()));
         }
     }
 
@@ -243,6 +275,8 @@ public class SongController {
     ) {
         try {
             String uploadDir = "D:/web nhac/duan1/upload";
+            Path dir = Paths.get(uploadDir);
+            Files.createDirectories(dir);
 
             // 🔎 Lấy bài hát hiện tại
             Song song = songService.getByIdOrThrow(id);
@@ -254,16 +288,16 @@ public class SongController {
 
             // 🎵 Nếu có file nhạc mới
             if (audioFile != null && !audioFile.isEmpty()) {
-                String audioFileName = UUID.randomUUID() + "_" + audioFile.getOriginalFilename();
-                Path audioPath = Paths.get(uploadDir, audioFileName);
+                String audioFileName = resolveUniqueFileName(dir, sanitizeFileName(audioFile.getOriginalFilename()));
+                Path audioPath = dir.resolve(audioFileName);
                 Files.copy(audioFile.getInputStream(), audioPath, StandardCopyOption.REPLACE_EXISTING);
                 song.setFilePath("/upload/" + audioFileName);
             }
 
             // 🖼️ Nếu có ảnh bìa mới
             if (coverImage != null && !coverImage.isEmpty()) {
-                String coverFileName = UUID.randomUUID() + "_" + coverImage.getOriginalFilename();
-                Path coverPath = Paths.get(uploadDir, coverFileName);
+                String coverFileName = resolveUniqueFileName(dir, sanitizeFileName(coverImage.getOriginalFilename()));
+                Path coverPath = dir.resolve(coverFileName);
                 Files.copy(coverImage.getInputStream(), coverPath, StandardCopyOption.REPLACE_EXISTING);
                 song.setCoverImage("/upload/" + coverFileName);
             }
@@ -294,6 +328,49 @@ public class SongController {
         }
     }
 
+    @PatchMapping("/{id}/lyrics")
+    public ResponseEntity<?> updateLyrics(
+            @PathVariable Long id,
+            @jakarta.validation.Valid @RequestBody SongLyricsUpdateRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser
+    ) {
+        try {
+            SongResponse updated = songService.updateLyrics(id, request.getLyrics(), currentUser);
+            return ResponseEntity.ok(ApiResponse.success("Lyrics updated successfully", updated));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Error updating lyrics: " + e.getMessage()));
+        }
+    }
+
+    private String sanitizeFileName(String original) {
+        if (original == null || original.isBlank()) return "file";
+        int dot = original.lastIndexOf('.');
+        String name = (dot > 0) ? original.substring(0, dot) : original;
+        String ext  = (dot > 0) ? original.substring(dot) : "";
+
+        // bỏ ký tự lạ, thay khoảng trắng -> '-', gộp nhiều '-' liên tiếp
+        name = name.replaceAll("[^a-zA-Z0-9-_\\.]", "-")
+                .replaceAll("-{2,}", "-")
+                .toLowerCase();
+        ext  = ext.replaceAll("[^a-zA-Z0-9\\.]", "").toLowerCase();
+
+        if (name.isBlank()) name = "file";
+        return name + ext;
+    }
+
+    private String resolveUniqueFileName(Path dir, String sanitized) {
+        int dot = sanitized.lastIndexOf('.');
+        String base = (dot > 0) ? sanitized.substring(0, dot) : sanitized;
+        String ext  = (dot > 0) ? sanitized.substring(dot) : "";
+
+        Path p = dir.resolve(sanitized);
+        int i = 1;
+        while (Files.exists(p)) {
+            p = dir.resolve(base + "-" + i + ext);
+            i++;
+        }
+        return p.getFileName().toString();
+    }
 
 
     @DeleteMapping("/{id}")

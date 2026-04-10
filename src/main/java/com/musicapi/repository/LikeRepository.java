@@ -24,11 +24,20 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
     // ✅ Thêm method mới: kiểm tra Like theo ID
     boolean existsByUser_IdAndSong_Id(Long userId, Long songId);
 
+    void deleteByUserAndSong(User user, Song song);
+
     // Lấy danh sách bài hát đã like bởi User
     @Query("SELECT l.song FROM Like l WHERE l.user = :user ORDER BY l.createdAt DESC")
     Page<Song> findLikedSongsByUser(@Param("user") User user, Pageable pageable);
 
+    @Query("SELECT l.song FROM Like l WHERE l.user.id = :userId ORDER BY l.createdAt DESC")
+    Page<Song> findLikedSongsByUserId(@Param("userId") Long userId, Pageable pageable);
+
     // Đếm số lượt like theo bài hát
     @Query("SELECT COUNT(l) FROM Like l WHERE l.song = :song")
     Long countLikesBySong(@Param("song") Song song);
+
+    Long countBySong_Id(Long songId);
+
+    Long countBySong_Artist_Id(Long artistId);
 }

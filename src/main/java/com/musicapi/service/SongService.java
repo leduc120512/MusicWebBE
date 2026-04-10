@@ -2,6 +2,7 @@ package com.musicapi.service;
 
 import com.musicapi.dto.SongResponse;
 import com.musicapi.model.PlayHistory;
+import com.musicapi.model.Role;
 import com.musicapi.model.Song;
 import com.musicapi.model.User;
 import com.musicapi.repository.LikeRepository;
@@ -87,6 +88,19 @@ public class SongService {
         return songs.map(song -> convertToSongResponse(song, currentUser));
     }
 
+    public Page<SongResponse> getMySongs(UserPrincipal currentUser, int page, int size) {
+        if (currentUser == null) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        User artist = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<Song> songs = songRepository.findByArtist(artist, pageable);
+        return songs.map(song -> convertToSongResponse(song, currentUser));
+    }
+
     public Page<SongResponse> searchSongs(String keyword, int page, int size, UserPrincipal currentUser) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Song> songs = songRepository.searchByTitle(keyword, pageable);
@@ -108,6 +122,13 @@ public class SongService {
         
         return songs.map(song -> convertToSongResponse(song, currentUser));
     }
+
+    public Page<SongResponse> getSongsByAlbum(Long albumId, int page, int size, UserPrincipal currentUser) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Song> songs = songRepository.findByAlbumId(albumId, pageable);
+        return songs.map(song -> convertToSongResponse(song, currentUser));
+    }
+
     @Transactional
     public void addPlayHistory(Long songId, Long userId) {
         Song song = songRepository.findById(songId)
@@ -125,20 +146,49 @@ public class SongService {
         return convertToSongResponse(song, currentUser);
     }
 
+    public SongResponse updateLyrics(Long id, String lyrics, UserPrincipal currentUser) {
+        if (currentUser == null) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        Song song = songRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Song not found"));
+
+        User actor = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        boolean isOwner = song.getArtist() != null && song.getArtist().getId().equals(actor.getId());
+        boolean isAdmin = actor.getRole() == Role.ROLE_ADMIN;
+        if (!isOwner && !isAdmin) {
+            throw new RuntimeException("Unauthorized to update lyrics for this song");
+        }
+
+        String normalized = lyrics == null ? "" : lyrics.replace("\r\n", "\n").replace("\r", "\n").trim();
+        if (normalized.isBlank()) {
+            throw new RuntimeException("Lyrics must not be blank");
+        }
+
+        song.setLyrics(normalized);
+        Song saved = songRepository.save(song);
+        return convertToSongResponse(saved, currentUser);
+    }
+
     public  SongResponse convertToSongResponse(Song song, UserPrincipal currentUser) {
         SongResponse response = new SongResponse();
         response.setId(song.getId());
         response.setTitle(song.getTitle());
         response.setDescription(song.getDescription());
         response.setCoverImage(song.getCoverImage());
-        response.setLyrics(song.getLyrics()); // ✅ sửa lỗi ghi đè ở đây
-
+        String lyrics = song.getLyrics();
+        response.setLyrics(lyrics == null ? null : lyrics.replace("\r\n", "\n").replace("\r", "\n"));
+        response.setFilePath(song.getFilePath());
         response.setDuration(song.getDuration());
         response.setPlayCount(song.getPlayCount());
         response.setArtistName(song.getArtist().getFullName());
         response.setAlbumTitle(song.getAlbum() != null ? song.getAlbum().getTitle() : null);
         response.setGenreName(song.getGenre() != null ? song.getGenre().getName() : null);
         response.setCreatedAt(song.getCreatedAt());
+        response.setLikeCount(likeRepository.countBySong_Id(song.getId()));
 
         if (currentUser != null) {
             User user = userRepository.findById(currentUser.getId()).orElse(null);

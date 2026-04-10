@@ -92,6 +92,10 @@ public class AlbumService {
         response.setSongs(songResponses);
         return response;
     }
+    public Album getByIdOrThrow(Long id) {
+        return albumRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Album not found with id: " + id));
+    }
 
     private AlbumResponse convertToAlbumResponse(Album album) {
         AlbumResponse response = new AlbumResponse();
@@ -111,7 +115,7 @@ public class AlbumService {
         response.setId(song.getId());
         response.setTitle(song.getTitle());
         response.setDescription(song.getDescription());
-        response.setDescription(song.getLyrics());
+        response.setLyrics(song.getLyrics());
         response.setCoverImage(song.getCoverImage());
         response.setDuration(song.getDuration());
         response.setPlayCount(song.getPlayCount());
@@ -119,6 +123,7 @@ public class AlbumService {
         response.setAlbumTitle(song.getAlbum() != null ? song.getAlbum().getTitle() : null);
         response.setGenreName(song.getGenre() != null ? song.getGenre().getName() : null);
         response.setCreatedAt(song.getCreatedAt());
+        response.setLikeCount(likeRepository.countBySong_Id(song.getId()));
 
         if (currentUser != null) {
             response.setLiked(likeRepository.existsByUser_IdAndSong_Id(currentUser.getId(), song.getId()));

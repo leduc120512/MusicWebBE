@@ -15,7 +15,9 @@ import java.util.List;
 public interface AlbumRepository extends JpaRepository<Album, Long> {
     List<Album> findByArtist(User artist);
     Page<Album> findByArtist(User artist, Pageable pageable);
-    
+    Long countByArtist(User artist);
+    Long countByArtist_Id(Long artistId);
+
     @Query("SELECT a FROM Album a WHERE a.title LIKE %:keyword%")
     Page<Album> searchByTitle(@Param("keyword") String keyword, Pageable pageable);
     

@@ -1,5 +1,6 @@
 package com.musicapi.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.data.annotation.CreatedDate;
@@ -14,6 +15,7 @@ import java.util.Set;
 @Table(name = "genres")
 @EntityListeners(AuditingEntityListener.class)
 public class Genre {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -30,17 +32,12 @@ public class Genre {
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "genre", cascade = CascadeType.ALL)
+    // 🔥 DÒNG FIX LỖI NẰM Ở ĐÂY
+    @OneToMany(mappedBy = "genre", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private Set<Song> songs = new HashSet<>();
 
-    // Constructors
-    public Genre() {}
-
-    public Genre(String name) {
-        this.name = name;
-    }
-
-    // Getters and Setters
+    // ===== getter / setter =====
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

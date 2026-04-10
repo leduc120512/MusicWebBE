@@ -15,7 +15,18 @@ import java.util.List;
 public interface SongRepository extends JpaRepository<Song, Long> {
     List<Song> findByArtist(User artist);
     Page<Song> findByArtist(User artist, Pageable pageable);
-    
+    Long countByArtist(User artist);
+    Long countByArtist_Id(Long artistId);
+
+    @Query("SELECT COALESCE(SUM(s.playCount), 0) FROM Song s WHERE s.artist = :artist")
+    Long sumPlayCountByArtist(@Param("artist") User artist);
+
+    @Query("SELECT COALESCE(SUM(s.playCount), 0) FROM Song s WHERE s.artist.id = :artistId")
+    Long sumPlayCountByArtistId(@Param("artistId") Long artistId);
+
+    @Query("SELECT COALESCE(SUM(s.playCount), 0) FROM Song s")
+    Long sumAllPlayCount();
+
     @Query("SELECT s FROM Song s WHERE s.active = true")
     Page<Song> findActiveSongs(Pageable pageable);
     
@@ -27,6 +38,9 @@ public interface SongRepository extends JpaRepository<Song, Long> {
     
     @Query("SELECT s FROM Song s WHERE s.genre.name = :genreName AND s.active = true")
     Page<Song> findByGenreName(@Param("genreName") String genreName, Pageable pageable);
+
+    @Query("SELECT s FROM Song s WHERE s.album.id = :albumId AND s.active = true ORDER BY s.createdAt DESC")
+    Page<Song> findByAlbumId(@Param("albumId") Long albumId, Pageable pageable);
     
     @Query("SELECT s FROM Song s WHERE s.active = true ORDER BY s.playCount DESC")
     Page<Song> findPopularSongs(Pageable pageable);

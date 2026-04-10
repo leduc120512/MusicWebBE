@@ -10,11 +10,22 @@ public class SongResponse {
     private Integer duration;
     private Long playCount;
     private String lyrics;
+
+    public String getFilePath() {
+        return filePath;
+    }
+
+    public void setFilePath(String filePath) {
+        this.filePath = filePath;
+    }
+
+    private String filePath;
     private String artistName;
     private String albumTitle;
     private String genreName;
     private LocalDateTime createdAt;
     private boolean liked;
+    private Long likeCount;
 
     // Constructors
     public SongResponse() {}
@@ -59,5 +70,8 @@ public class SongResponse {
 
     public boolean isLiked() { return liked; }
     public void setLiked(boolean liked) { this.liked = liked; }
+
+    public Long getLikeCount() { return likeCount; }
+    public void setLikeCount(Long likeCount) { this.likeCount = likeCount; }
 
 }

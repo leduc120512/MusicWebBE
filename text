@@ -1,0 +1,76 @@
+@startuml
+left to right direction
+skinparam linetype ortho
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam actorStyle stickman
+skinparam roundcorner 6
+skinparam dpi 150
+scale max 1600 width
+skinparam monochrome true
+
+title Music API - Use Case Diagram (A4 Landscape)
+
+actor "Khach" as Guest
+actor "Thanh vien" as Member
+actor "Tac gia" as Author
+actor "Quan tri vien" as Admin
+
+Author --|> Member
+Admin --|> Member
+
+rectangle "Music API System" {
+  package "Public" {
+    usecase "Dang ky" as UC_Signup
+    usecase "Dang nhap" as UC_Login
+    usecase "Duyet va tim kiem bai hat" as UC_BrowseSongs
+    usecase "Xem chi tiet bai hat" as UC_ViewSong
+  }
+
+  package "Member" {
+    usecase "Tuong tac bai hat\n(Like, Comment, Reply)" as UC_Engage
+    usecase "Bao cao noi dung" as UC_ReportContent
+    usecase "Xem thu vien ca nhan" as UC_ViewLibrary
+    usecase "Quan ly yeu cau nang cap tac gia" as UC_AuthorRequest
+  }
+
+  package "Author" {
+    usecase "Quan ly bai hat cua toi" as UC_ManageMySongs
+    usecase "Quan ly album cua toi" as UC_ManageMyAlbums
+    usecase "Cap nhat loi bai hat" as UC_UpdateLyrics
+    usecase "Quan ly Artist Studio" as UC_AuthorStudio
+  }
+
+  package "Admin" {
+    usecase "Kiem duyet yeu cau tac gia" as UC_ReviewAuthorRequest
+    usecase "Kiem duyet bao cao" as UC_ReviewReports
+    usecase "An noi dung vi pham" as UC_HideContent
+    usecase "Dashboard toan he thong" as UC_SystemDashboard
+    usecase "Quan ly danh muc he thong" as UC_ManageCatalog
+  }
+}
+
+Guest --> UC_Signup
+Guest --> UC_Login
+Guest --> UC_BrowseSongs
+Guest --> UC_ViewSong
+
+Member --> UC_Engage
+Member --> UC_ReportContent
+Member --> UC_ViewLibrary
+Member --> UC_AuthorRequest
+
+Author --> UC_ManageMySongs
+Author --> UC_ManageMyAlbums
+Author --> UC_AuthorStudio
+
+Admin --> UC_ReviewAuthorRequest
+Admin --> UC_ReviewReports
+Admin --> UC_SystemDashboard
+Admin --> UC_ManageCatalog
+
+UC_ManageMySongs .> UC_UpdateLyrics : <<include>>
+UC_ReviewReports .> UC_HideContent : <<extend>>
+
+@enduml
+

@@ -23,7 +23,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     List<User> findByRole(Role role);
     Page<User> findByRole(Role role, Pageable pageable);
-    
+    Long countByRole(Role role);
+
     @Query("SELECT u FROM User u WHERE u.role = :role AND u.active = true")
     List<User> findActiveUsersByRole(@Param("role") Role role);
     

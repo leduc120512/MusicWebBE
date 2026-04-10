@@ -6,17 +6,21 @@ import com.musicapi.security.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -24,10 +28,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     @Autowired
-    private CustomUserDetailsService customUserDetailsService;
+    private JwtAuthenticationEntryPoint unauthorizedHandler;
 
     @Autowired
-    private JwtAuthenticationEntryPoint unauthorizedHandler;
+    private CustomUserDetailsService customUserDetailsService;
 
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter() {
@@ -36,15 +40,15 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return NoOpPasswordEncoder.getInstance();
     }
 
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(customUserDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder());
-        return authProvider;
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(customUserDetailsService);
+        provider.setPasswordEncoder(passwordEncoder());
+        return provider;
     }
 
     @Bean
@@ -53,31 +57,80 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.cors().and().csrf().disable()
-            .exceptionHandling().authenticationEntryPoint(unauthorizedHandler).and()
-            .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
-                .authorizeHttpRequests(authz -> authz
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration cors = new CorsConfiguration();
+        cors.setAllowedOrigins(List.of("*"));
+        cors.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
+        cors.setAllowedHeaders(List.of("*"));
+        cors.setExposedHeaders(List.of("Authorization", "Content-Disposition"));
+        cors.setAllowCredentials(false);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", cors);
+        return source;
+    }
+
+    @Bean
+    public SecurityFilterChain filterChain(org.springframework.security.config.annotation.web.builders.HttpSecurity http) throws Exception {
+        http
+                .cors(c -> c.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedHandler))
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        // static
+                        .requestMatchers(
+                                "/upload/**",
+                                "/favicon.ico",
+                                "/assets/**", "/static/**", "/resources/**",
+                                "/css/**", "/js/**", "/images/**", "/webjars/**"
+                        ).permitAll()
+
+                        // public APIs
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/test", "/api/health").permitAll()
                         .requestMatchers("/api/songs/public/**").permitAll()
-                        .requestMatchers("/api/songs/latest").permitAll()
-                        .requestMatchers("/api/banners/*").permitAll()
-                        .requestMatchers("/api/banners").permitAll()
-                        .requestMatchers("/api/songs/*").permitAll()
-                        .requestMatchers("/api/songs/*").permitAll()
-                        .requestMatchers("/api/albums/*").permitAll()
-                        .requestMatchers("/api/albums").permitAll()
-                        .requestMatchers("/api/songs").permitAll()
-                        .requestMatchers("/api/test", "/api/health").permitAll() // ✅ Cho phép truy cập test và health
+
+                        // allow public read access to songs, artists, and comments
+                        .requestMatchers(HttpMethod.GET, "/api/songs/me", "/api/songs/my").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/songs").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/songs/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/songs/by-album/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/artists/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/comments/song/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/comments/*/replies").permitAll()
+
+                        // protect song write and moderation paths
+                        .requestMatchers(HttpMethod.POST, "/api/songs/*").hasAnyRole("AUTHOR", "ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/songs/*").hasAnyRole("AUTHOR", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/songs/*").hasAnyRole("AUTHOR", "ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/songs/*").hasAnyRole("AUTHOR", "ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/songs/*/lyrics").hasAnyRole("AUTHOR", "ADMIN")
+
+                        .requestMatchers(HttpMethod.GET, "/api/songs/latest", "/api/songs/popular").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/banners", "/api/banners/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/albums/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/likes/song/*/count").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/banners").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/banners/*").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/banners/*").hasRole("ADMIN")
+
+                        // 🎧 genres (👇 THÊM PHẦN NÀY)
+                        .requestMatchers(HttpMethod.GET, "/api/genres/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/genres/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/genres/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/genres/**").hasRole("ADMIN")
+
+                        // role-based
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/author/**").hasAnyRole("AUTHOR", "ADMIN")
+
                         .anyRequest().authenticated()
                 )
 ;
 
         http.authenticationProvider(authenticationProvider());
         http.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
-
         return http.build();
     }
 }

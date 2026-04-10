@@ -1,5 +1,6 @@
 package com.musicapi.dto;
 
+import com.musicapi.model.Gender;
 import com.musicapi.model.Role;
 
 public class UserSummary {
@@ -8,14 +9,16 @@ public class UserSummary {
     private String fullName;
     private String email;
     private String avatar;
+    private Gender gender;
     private Role role;
 
-    public UserSummary(Long id, String username, String fullName, String email, String avatar, Role role) {
+    public UserSummary(Long id, String username, String fullName, String email, String avatar, Gender gender, Role role) {
         this.id = id;
         this.username = username;
         this.fullName = fullName;
         this.email = email;
         this.avatar = avatar;
+        this.gender = gender;
         this.role = role;
     }
 
@@ -34,6 +37,9 @@ public class UserSummary {
 
     public String getAvatar() { return avatar; }
     public void setAvatar(String avatar) { this.avatar = avatar; }
+
+    public Gender getGender() { return gender; }
+    public void setGender(Gender gender) { this.gender = gender; }
 
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }

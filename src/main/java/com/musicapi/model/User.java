@@ -1,5 +1,6 @@
 package com.musicapi.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -33,6 +34,7 @@ public class User {
 
     @NotBlank
     @Size(max = 100)
+    @JsonIgnore // Ẩn mật khẩu khi trả JSON
     private String password;
 
     @Size(max = 100)
@@ -42,9 +44,16 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
-    private Role role = Role.USER;
+    private Gender gender = Gender.OTHER;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private Role role = Role.ROLE_USER;
 
     private boolean active = true;
+
+
+
 
     @CreatedDate
     private LocalDateTime createdAt;
@@ -53,18 +62,21 @@ public class User {
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    @JsonIgnore
     private Set<Playlist> playlists = new HashSet<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    @JsonIgnore
     private Set<Like> likes = new HashSet<>();
 
     @OneToMany(mappedBy = "follower", cascade = CascadeType.ALL)
+    @JsonIgnore
     private Set<Follow> following = new HashSet<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    @JsonIgnore
     private Set<PlayHistory> playHistory = new HashSet<>();
 
-    // Constructors
     public User() {}
 
     public User(String username, String email, String password, String fullName) {
@@ -75,13 +87,11 @@ public class User {
     }
 
     // Getters and Setters
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
-    public String getUsername() {
-        return username; // ✅ Đúng, đây mới là username từ DB
-    }
-
+    public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
 
     public String getEmail() { return email; }
@@ -95,6 +105,9 @@ public class User {
 
     public String getAvatar() { return avatar; }
     public void setAvatar(String avatar) { this.avatar = avatar; }
+
+    public Gender getGender() { return gender; }
+    public void setGender(Gender gender) { this.gender = gender; }
 
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }

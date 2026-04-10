@@ -2,10 +2,11 @@ package com.musicapi.security;
 
 import com.musicapi.model.User;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
-import java.util.Collections;
+import java.util.List;
 
 public class UserPrincipal implements UserDetails {
     private Long id;
@@ -29,7 +30,7 @@ public class UserPrincipal implements UserDetails {
                 user.getUsername(),
                 user.getEmail(),
                 user.getPassword(),
-                Collections.emptyList() // hoặc cấp quyền nếu cần
+                List.of(new SimpleGrantedAuthority(user.getRole().name()))
         );
     }
 
@@ -39,7 +40,7 @@ public class UserPrincipal implements UserDetails {
                 user.getUsername(),
                 user.getEmail(),
                 user.getPassword(),
-                Collections.emptyList()
+                List.of(new SimpleGrantedAuthority(user.getRole().name()))
         );
     }
 
@@ -49,7 +50,7 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public String getUsername() {
-        return username; // ✅ dùng cho Spring Security để so khớp tên đăng nhập
+        return username;
     }
 
     @Override
@@ -62,7 +63,6 @@ public class UserPrincipal implements UserDetails {
         return authorities;
     }
 
-    // Các flag mặc định
     @Override
     public boolean isAccountNonExpired() {
         return true;
