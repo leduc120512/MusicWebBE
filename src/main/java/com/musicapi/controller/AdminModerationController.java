@@ -5,6 +5,7 @@ import com.musicapi.dto.ApiResponse;
 import com.musicapi.model.CommentReportStatus;
 import com.musicapi.model.ViolationReportStatus;
 import com.musicapi.security.UserPrincipal;
+import com.musicapi.service.AiCommentModerationService;
 import com.musicapi.service.ArtistRegistrationRequestService;
 import com.musicapi.service.CommentService;
 import com.musicapi.service.DashboardService;
@@ -30,6 +31,9 @@ public class AdminModerationController {
 
     @Autowired
     private DashboardService dashboardService;
+
+    @Autowired
+    private AiCommentModerationService aiCommentModerationService;
 
     @GetMapping("/dashboard")
     public ResponseEntity<?> getAdminDashboard(
@@ -130,6 +134,20 @@ public class AdminModerationController {
                     commentService.reviewCommentReport(currentUser.getId(), reportId, request)));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Xử lý thất bại: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/comments/ai-scan-delete")
+    public ResponseEntity<?> scanAndDeleteViolatingComments(
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @RequestParam(defaultValue = "50") int limit,
+            @RequestParam(required = false) String model
+    ) {
+        try {
+            return ResponseEntity.ok(ApiResponse.success("Da quet va xoa binh luan vi pham",
+                    aiCommentModerationService.scanAndDelete(currentUser.getId(), limit, model)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Quet binh luan that bai: " + e.getMessage()));
         }
     }
 }

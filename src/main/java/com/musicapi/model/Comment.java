@@ -35,6 +35,11 @@ public class Comment {
     @Column(nullable = false)
     private boolean deleted = false;
 
+    @Column(length = 500)
+    private String aiModerationReason;
+
+    private LocalDateTime aiModeratedAt;
+
     @CreatedDate
     private LocalDateTime createdAt;
 
@@ -53,6 +58,10 @@ public class Comment {
     public void setContent(String content) { this.content = content; }
     public boolean isDeleted() { return deleted; }
     public void setDeleted(boolean deleted) { this.deleted = deleted; }
+    public String getAiModerationReason() { return aiModerationReason; }
+    public void setAiModerationReason(String aiModerationReason) { this.aiModerationReason = aiModerationReason; }
+    public LocalDateTime getAiModeratedAt() { return aiModeratedAt; }
+    public void setAiModeratedAt(LocalDateTime aiModeratedAt) { this.aiModeratedAt = aiModeratedAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

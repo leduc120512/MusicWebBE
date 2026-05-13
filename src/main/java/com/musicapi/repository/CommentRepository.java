@@ -6,6 +6,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CommentRepository extends JpaRepository<Comment, Long> {
+    Page<Comment> findByDeletedFalseOrderByCreatedAtDesc(Pageable pageable);
+
     Page<Comment> findBySongIdAndParentIsNullAndDeletedFalseOrderByCreatedAtDesc(Long songId, Pageable pageable);
 
     Page<Comment> findByParentIdAndDeletedFalseOrderByCreatedAtAsc(Long parentId, Pageable pageable);

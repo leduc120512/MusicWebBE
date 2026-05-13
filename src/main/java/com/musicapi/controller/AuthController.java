@@ -301,6 +301,68 @@ public class AuthController {
         }
     }
 
+    @PutMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> updateCurrentUser(
+            @RequestHeader(value = "Authorization", required = false) String token,
+            @RequestParam(value = "fullName", required = false) String fullName,
+            @RequestParam(value = "email", required = false) String email,
+            @RequestParam(value = "gender", required = false) String gender,
+            @RequestParam(value = "avatar", required = false) MultipartFile avatarFile
+    ) {
+        try {
+            if (token == null || token.isBlank() || !token.startsWith("Bearer ")) {
+                return ResponseEntity.status(401).body(ApiResponse.error("Authorization header is missing or invalid"));
+            }
+
+            String jwt = token.replace("Bearer ", "");
+            Long userId = tokenProvider.getUserIdFromJWT(jwt);
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            if (fullName != null) user.setFullName(fullName);
+
+            if (email != null && !email.isBlank()) {
+                Optional<User> existingUser = userRepository.findByEmail(email);
+                if (existingUser.isPresent() && !existingUser.get().getId().equals(userId)) {
+                    return ResponseEntity.badRequest().body(ApiResponse.error("Email already in use!"));
+                }
+                user.setEmail(email);
+            }
+
+            if (gender != null && !gender.isBlank()) {
+                user.setGender(parseGenderOrDefault(gender));
+            }
+
+            if (avatarFile != null && !avatarFile.isEmpty()) {
+                String uploadDir = "D:/web nhac/duan1/upload/userImg";
+                Files.createDirectories(Paths.get(uploadDir));
+
+                String avatarFileName = UUID.randomUUID() + "_" + avatarFile.getOriginalFilename();
+                Path avatarPath = Paths.get(uploadDir, avatarFileName);
+                Files.copy(avatarFile.getInputStream(), avatarPath, StandardCopyOption.REPLACE_EXISTING);
+
+                user.setAvatar("/upload/userImg/" + avatarFileName);
+            }
+
+            User result = userRepository.save(user);
+
+            UserSummary userSummary = new UserSummary(
+                    result.getId(),
+                    result.getUsername(),
+                    result.getFullName(),
+                    result.getEmail(),
+                    result.getAvatar(),
+                    result.getGender(),
+                    result.getRole()
+            );
+
+            return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", userSummary));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Update profile failed: " + e.getMessage()));
+        }
+    }
+
     private Gender parseGenderOrDefault(String genderText) {
         if (genderText == null || genderText.isBlank()) {
             return Gender.OTHER;
