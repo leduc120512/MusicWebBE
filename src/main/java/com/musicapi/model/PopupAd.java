@@ -18,8 +18,10 @@ public class PopupAd {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    @Column(length = 500)
     private String image;
 
+    @Column(length = 500)
     private String targetUrl;
 
     @Column(nullable = false)

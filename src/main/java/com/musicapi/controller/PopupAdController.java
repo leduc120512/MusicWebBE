@@ -45,7 +45,9 @@ public class PopupAdController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startAt,
             @RequestParam(value = "endAt", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endAt,
-            @RequestParam(value = "image", required = false) MultipartFile imageFile
+            @RequestParam(value = "image", required = false) MultipartFile imageFile,
+            @RequestParam(value = "imageFile", required = false) MultipartFile imageFileAlias,
+            @RequestParam(value = "file", required = false) MultipartFile fileAlias
     ) {
         try {
             PopupAd popupAd = new PopupAd();
@@ -55,7 +57,7 @@ public class PopupAdController {
             popupAd.setActive(active);
             popupAd.setStartAt(startAt);
             popupAd.setEndAt(endAt);
-            popupAd.setImage(saveImage(imageFile));
+            popupAd.setImage(saveImage(firstFile(imageFile, imageFileAlias, fileAlias)));
             return ApiResponse.success("Tao popup quang cao thanh cong", popupAdService.create(popupAd));
         } catch (Exception e) {
             return ApiResponse.error("Tao popup quang cao that bai: " + e.getMessage());
@@ -73,7 +75,9 @@ public class PopupAdController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startAt,
             @RequestParam(value = "endAt", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endAt,
-            @RequestParam(value = "image", required = false) MultipartFile imageFile
+            @RequestParam(value = "image", required = false) MultipartFile imageFile,
+            @RequestParam(value = "imageFile", required = false) MultipartFile imageFileAlias,
+            @RequestParam(value = "file", required = false) MultipartFile fileAlias
     ) {
         try {
             PopupAd current = popupAdService.getById(id);
@@ -84,7 +88,7 @@ public class PopupAdController {
             request.setActive(active == null ? current.isActive() : active);
             request.setStartAt(startAt == null ? current.getStartAt() : startAt);
             request.setEndAt(endAt == null ? current.getEndAt() : endAt);
-            String image = saveImage(imageFile);
+            String image = saveImage(firstFile(imageFile, imageFileAlias, fileAlias));
             request.setImage(image == null ? current.getImage() : image);
             return ApiResponse.success("Cap nhat popup quang cao thanh cong", popupAdService.update(id, request));
         } catch (Exception e) {
@@ -98,6 +102,15 @@ public class PopupAdController {
         return ApiResponse.success("Xoa popup quang cao thanh cong", null);
     }
 
+    private MultipartFile firstFile(MultipartFile... files) {
+        for (MultipartFile file : files) {
+            if (file != null && !file.isEmpty()) {
+                return file;
+            }
+        }
+        return null;
+    }
+
     private String saveImage(MultipartFile imageFile) throws Exception {
         if (imageFile == null || imageFile.isEmpty()) {
             return null;
@@ -105,10 +118,38 @@ public class PopupAdController {
 
         Path dir = Paths.get(UPLOAD_DIR);
         Files.createDirectories(dir);
-        String original = imageFile.getOriginalFilename() == null ? "popup" : imageFile.getOriginalFilename();
-        String safeName = original.replaceAll("[^a-zA-Z0-9._-]", "-").toLowerCase();
-        String fileName = UUID.randomUUID() + "_" + safeName;
+        String safeName = sanitizeFileName(imageFile.getOriginalFilename());
+        String fileName = resolveUniqueFileName(dir, UUID.randomUUID() + "_" + safeName);
         Files.copy(imageFile.getInputStream(), dir.resolve(fileName), StandardCopyOption.REPLACE_EXISTING);
         return "/upload/popup/" + fileName;
+    }
+
+    private String sanitizeFileName(String original) {
+        if (original == null || original.isBlank()) return "popup";
+        int dot = original.lastIndexOf('.');
+        String name = (dot > 0) ? original.substring(0, dot) : original;
+        String ext  = (dot > 0) ? original.substring(dot) : "";
+
+        name = name.replaceAll("[^a-zA-Z0-9-_\\.]", "-")
+                .replaceAll("-{2,}", "-")
+                .toLowerCase();
+        ext = ext.replaceAll("[^a-zA-Z0-9\\.]", "").toLowerCase();
+
+        if (name.isBlank()) name = "popup";
+        return name + ext;
+    }
+
+    private String resolveUniqueFileName(Path dir, String sanitized) {
+        int dot = sanitized.lastIndexOf('.');
+        String base = (dot > 0) ? sanitized.substring(0, dot) : sanitized;
+        String ext  = (dot > 0) ? sanitized.substring(dot) : "";
+
+        Path path = dir.resolve(sanitized);
+        int index = 1;
+        while (Files.exists(path)) {
+            path = dir.resolve(base + "-" + index + ext);
+            index++;
+        }
+        return path.getFileName().toString();
     }
 }

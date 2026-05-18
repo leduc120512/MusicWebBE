@@ -74,13 +74,27 @@ public class AdminModerationController {
     }
 
     @GetMapping("/song-violation-reports")
-    public ResponseEntity<?> getSongViolationReports(@RequestParam(defaultValue = "PENDING") String status) {
+    public ResponseEntity<?> getSongViolationReports(
+            @RequestParam(defaultValue = "PENDING") String status,
+            @RequestParam(defaultValue = "ALL") String tab
+    ) {
         try {
             ViolationReportStatus parsed = ViolationReportStatus.valueOf(status.trim().toUpperCase());
             return ResponseEntity.ok(ApiResponse.success("Danh sách báo cáo vi phạm bài hát",
-                    songViolationReportService.getByStatus(parsed)));
+                    songViolationReportService.getByStatusAndTab(parsed, tab)));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Không lấy được danh sách: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/song-violation-reports/summary")
+    public ResponseEntity<?> getSongViolationReportSummary(@RequestParam(defaultValue = "PENDING") String status) {
+        try {
+            ViolationReportStatus parsed = ViolationReportStatus.valueOf(status.trim().toUpperCase());
+            return ResponseEntity.ok(ApiResponse.success("Thống kê tab báo cáo vi phạm bài hát",
+                    songViolationReportService.getTabSummary(parsed)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Không lấy được thống kê: " + e.getMessage()));
         }
     }
 

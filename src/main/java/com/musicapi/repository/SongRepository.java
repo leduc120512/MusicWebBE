@@ -44,6 +44,9 @@ public interface SongRepository extends JpaRepository<Song, Long> {
     
     @Query("SELECT s FROM Song s WHERE s.active = true ORDER BY s.playCount DESC")
     Page<Song> findPopularSongs(Pageable pageable);
+
+    @Query("SELECT s FROM Song s WHERE s.active = true ORDER BY s.playCount DESC, s.createdAt DESC")
+    Page<Song> findTrendingSongs(Pageable pageable);
     
     @Query("SELECT s FROM Song s WHERE s.active = true ORDER BY s.createdAt DESC")
     Page<Song> findLatestSongs(Pageable pageable);

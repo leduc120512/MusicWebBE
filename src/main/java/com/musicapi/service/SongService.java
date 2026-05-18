@@ -2,7 +2,6 @@ package com.musicapi.service;
 
 import com.musicapi.dto.SongResponse;
 import com.musicapi.model.PlayHistory;
-import com.musicapi.model.Role;
 import com.musicapi.model.Song;
 import com.musicapi.model.User;
 import com.musicapi.repository.LikeRepository;
@@ -53,11 +52,6 @@ public class SongService {
         Song song = songRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Song not found"));
 
-        // Optionally check ownership:
-        if (!song.getArtist().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("Unauthorized to update this song");
-        }
-
         song.setTitle(updatedSong.getTitle());
         song.setDescription(updatedSong.getDescription());
         song.setLyrics(updatedSong.getLyrics());
@@ -85,6 +79,13 @@ public class SongService {
         Pageable pageable = PageRequest.of(page, size);
         Page<Song> songs = songRepository.findPopularSongs(pageable);
         
+        return songs.map(song -> convertToSongResponse(song, currentUser));
+    }
+
+    public Page<SongResponse> getTrendingSongs(int page, int size, UserPrincipal currentUser) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Song> songs = songRepository.findTrendingSongs(pageable);
+
         return songs.map(song -> convertToSongResponse(song, currentUser));
     }
 
@@ -147,21 +148,8 @@ public class SongService {
     }
 
     public SongResponse updateLyrics(Long id, String lyrics, UserPrincipal currentUser) {
-        if (currentUser == null) {
-            throw new RuntimeException("Unauthorized");
-        }
-
         Song song = songRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Song not found"));
-
-        User actor = userRepository.findById(currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        boolean isOwner = song.getArtist() != null && song.getArtist().getId().equals(actor.getId());
-        boolean isAdmin = actor.getRole() == Role.ROLE_ADMIN;
-        if (!isOwner && !isAdmin) {
-            throw new RuntimeException("Unauthorized to update lyrics for this song");
-        }
 
         String normalized = lyrics == null ? "" : lyrics.replace("\r\n", "\n").replace("\r", "\n").trim();
         if (normalized.isBlank()) {

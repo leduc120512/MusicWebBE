@@ -11,10 +11,14 @@ public class SongViolationReportResponse {
     private String songTitle;
     private Long reporterId;
     private String reporterUsername;
+    private String reporterRole;
     private ViolationType type;
     private String description;
     private String evidenceUrl;
     private ViolationReportStatus status;
+    private Long songReportCount;
+    private Long authorReportCount;
+    private boolean priorityVisible;
     private String adminNote;
     private Long reviewedById;
     private String reviewedByUsername;
@@ -31,6 +35,8 @@ public class SongViolationReportResponse {
     public void setReporterId(Long reporterId) { this.reporterId = reporterId; }
     public String getReporterUsername() { return reporterUsername; }
     public void setReporterUsername(String reporterUsername) { this.reporterUsername = reporterUsername; }
+    public String getReporterRole() { return reporterRole; }
+    public void setReporterRole(String reporterRole) { this.reporterRole = reporterRole; }
     public ViolationType getType() { return type; }
     public void setType(ViolationType type) { this.type = type; }
     public String getDescription() { return description; }
@@ -39,6 +45,12 @@ public class SongViolationReportResponse {
     public void setEvidenceUrl(String evidenceUrl) { this.evidenceUrl = evidenceUrl; }
     public ViolationReportStatus getStatus() { return status; }
     public void setStatus(ViolationReportStatus status) { this.status = status; }
+    public Long getSongReportCount() { return songReportCount; }
+    public void setSongReportCount(Long songReportCount) { this.songReportCount = songReportCount; }
+    public Long getAuthorReportCount() { return authorReportCount; }
+    public void setAuthorReportCount(Long authorReportCount) { this.authorReportCount = authorReportCount; }
+    public boolean isPriorityVisible() { return priorityVisible; }
+    public void setPriorityVisible(boolean priorityVisible) { this.priorityVisible = priorityVisible; }
     public String getAdminNote() { return adminNote; }
     public void setAdminNote(String adminNote) { this.adminNote = adminNote; }
     public Long getReviewedById() { return reviewedById; }

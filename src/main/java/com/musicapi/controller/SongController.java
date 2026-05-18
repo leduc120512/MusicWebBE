@@ -59,6 +59,20 @@ public class SongController {
         }
     }
 
+    @GetMapping("/trending")
+    public ResponseEntity<?> getTrendingSongs(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        try {
+            Page<SongResponse> songs = songService.getTrendingSongs(page, size, currentUser);
+            return ResponseEntity.ok(ApiResponse.success("Trending songs retrieved successfully", songs));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error retrieving trending songs: " + e.getMessage()));
+        }
+    }
+
     @GetMapping({"/me", "/my"})
     public ResponseEntity<?> getMySongs(
             @RequestParam(defaultValue = "0") int page,
@@ -282,10 +296,6 @@ public class SongController {
             Song song = songService.getByIdOrThrow(id);
 
             // 🔐 Kiểm tra quyền cập nhật
-            if (!song.getArtist().getId().equals(currentUser.getId())) {
-                return ResponseEntity.status(403).body(ApiResponse.error("You are not authorized to update this song"));
-            }
-
             // 🎵 Nếu có file nhạc mới
             if (audioFile != null && !audioFile.isEmpty()) {
                 String audioFileName = resolveUniqueFileName(dir, sanitizeFileName(audioFile.getOriginalFilename()));
@@ -393,6 +403,19 @@ public class SongController {
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Error retrieving popular songs: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/public/trending")
+    public ResponseEntity<?> getTrendingSongsPublic(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Page<SongResponse> songs = songService.getTrendingSongs(page, size, null);
+            return ResponseEntity.ok(ApiResponse.success("Trending songs retrieved successfully", songs));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Error retrieving trending songs: " + e.getMessage()));
         }
     }
 

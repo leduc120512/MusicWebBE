@@ -31,6 +31,8 @@ public class Song {
 
     private Integer duration; // in seconds
 
+    @Lob
+    @Column(columnDefinition = "LONGTEXT")
     private String lyrics;
 
     private Long playCount = 0L;

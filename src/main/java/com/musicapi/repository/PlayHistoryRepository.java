@@ -12,6 +12,8 @@ import org.springframework.stereotype.Repository;
 
 import jakarta.transaction.Transactional;
 
+import java.util.List;
+
 @Repository
 public interface PlayHistoryRepository extends JpaRepository<PlayHistory, Long> {
 
@@ -23,6 +25,9 @@ public interface PlayHistoryRepository extends JpaRepository<PlayHistory, Long> 
 
     @Query("SELECT COUNT(ph) FROM PlayHistory ph WHERE ph.user = :user")
     Long countPlaysByUser(@Param("user") User user);
+
+    @Query("SELECT ph FROM PlayHistory ph JOIN FETCH ph.song s LEFT JOIN FETCH s.genre LEFT JOIN FETCH s.artist WHERE ph.user = :user ORDER BY ph.playedAt DESC")
+    List<PlayHistory> findRecentHistoryWithSongByUser(@Param("user") User user, Pageable pageable);
 
     // 🆕 Thêm để hỗ trợ DELETE
     @Transactional

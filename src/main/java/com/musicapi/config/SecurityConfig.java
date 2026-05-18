@@ -99,12 +99,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/comments/song/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/comments/*/replies").permitAll()
 
-                        // protect song write and moderation paths
+                        // public song update endpoints
+                        .requestMatchers(HttpMethod.PUT, "/api/songs/*").permitAll()
+                        .requestMatchers(HttpMethod.PATCH, "/api/songs/*").permitAll()
+                        .requestMatchers(HttpMethod.PATCH, "/api/songs/*/lyrics").permitAll()
+
+                        // protect song create, delete and moderation paths
                         .requestMatchers(HttpMethod.POST, "/api/songs/*").hasAnyRole("AUTHOR", "ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/songs/*").hasAnyRole("AUTHOR", "ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/songs/*").hasAnyRole("AUTHOR", "ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/songs/*").hasAnyRole("AUTHOR", "ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/songs/*/lyrics").hasAnyRole("AUTHOR", "ADMIN")
 
                         .requestMatchers(HttpMethod.GET, "/api/songs/latest", "/api/songs/popular").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -114,6 +116,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/popup-ads/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/popup-ads/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/popup-ads/**").hasRole("ADMIN")
+                        .requestMatchers("/api/favorite-albums/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/albums/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/likes/song/*/count").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/banners").hasRole("ADMIN")
