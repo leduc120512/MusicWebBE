@@ -8,7 +8,6 @@ import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -23,9 +22,6 @@ import java.util.List;
  */
 @Configuration
 public class OpenApiConfig {
-
-    @Value("${server.port:8082}")
-    private String serverPort;
 
     @Bean
     public OpenAPI musicApiOpenAPI() {
@@ -49,9 +45,12 @@ public class OpenApiConfig {
                                 """)
                         .contact(new Contact().name("Music API team"))
                         .license(new License().name("Proprietary")))
+                // Relative on purpose: Swagger UI then calls whatever host it was
+                // loaded from. An absolute URL here breaks the moment the app runs
+                // anywhere other than the machine that wrote it.
                 .servers(List.of(new Server()
-                        .url("http://localhost:" + serverPort)
-                        .description("Local development")))
+                        .url("/")
+                        .description("This server")))
                 .addSecurityItem(new SecurityRequirement().addList(bearer))
                 .components(new Components().addSecuritySchemes(bearer,
                         new SecurityScheme()
