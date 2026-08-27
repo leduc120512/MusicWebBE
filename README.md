@@ -183,7 +183,7 @@ Conventions worth keeping:
 | `spring.datasource.url` | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_SSL_MODE` | `localhost:3306/music_db`, SSL `DISABLED` |
 | `spring.datasource.username` | `DB_USERNAME` | `root` |
 | `spring.datasource.password` | `DB_PASSWORD` | *(empty)* |
-| `server.port` | `SERVER_PORT` | `8082` |
+| `server.port` | `PORT` (set by the platform), else `SERVER_PORT` | `8082` |
 | `app.upload.dir` | `UPLOAD_DIR` | `D:/web nhac/duan1/upload` |
 | `jwt.secret` | `JWT_SECRET` | dev value — **set this anywhere shared** |
 | `jwt.expiration` | `JWT_EXPIRATION` | `86400000` (24h) |
@@ -197,6 +197,18 @@ Uploads are written under `app.upload.dir` and served from `/upload/**`. The
 paths in the seed data (`/upload/userImg/...`, `/upload/uploadalbums/...`)
 resolve against that directory, so point `UPLOAD_DIR` at the folder holding the
 existing media.
+
+---
+
+## Deployment
+
+The app ships as a Docker image; [`Dockerfile`](Dockerfile) and
+[`render.yaml`](render.yaml) are in the repository. See [DEPLOY.md](DEPLOY.md)
+for the Render walk-through, including what the free plan does to uploads.
+
+```bash
+docker build -t music-api .
+```
 
 ---
 

@@ -1,0 +1,54 @@
+# Render Blueprint - https://render.com/docs/blueprint-spec
+#
+# In the Render dashboard: New > Blueprint, point it at this repository.
+# Values marked "sync: false" are asked for once at deploy time and stored by
+# Render; they never land in the repository.
+
+services:
+  - type: web
+    name: music-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    # Closest region to the Aiven service in Bangalore
+    region: singapore
+    healthCheckPath: /api/health
+    autoDeploy: true
+
+    envVars:
+      # --- Aiven MySQL -------------------------------------------------------
+      # Host and port are on the Aiven service page; the password is a secret,
+      # so Render prompts for it instead of reading it from the repo.
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_NAME
+        value: music_db
+      - key: DB_USERNAME
+        value: avnadmin
+      - key: DB_PASSWORD
+        sync: false
+      # Aiven refuses plaintext connections
+      - key: DB_SSL_MODE
+        value: REQUIRED
+      - key: DB_TIMEZONE
+        value: Asia/Ho_Chi_Minh
+
+      # --- App ---------------------------------------------------------------
+      # Render generates a 256-bit value once and keeps it; regenerating it
+      # invalidates every issued token.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRATION
+        value: "86400000"
+
+      # Ephemeral on the free plan. Attach a disk and point this at its mount
+      # path if uploads have to survive a redeploy.
+      - key: UPLOAD_DIR
+        value: /tmp/upload
+
+      # Ollama is not reachable from Render; the AI endpoints will fail until
+      # this points at something public.
+      - key: OLLAMA_BASE_URL
+        sync: false

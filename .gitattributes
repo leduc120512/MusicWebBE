@@ -1,12 +1,19 @@
-# Working tree is Windows/CRLF (see .editorconfig); Git stores LF and checks out CRLF.
-# Run `git add --renormalize .` once after adopting this file.
+# The Java/Windows side of the project is CRLF in the working tree (see
+# .editorconfig); Git stores LF and checks out CRLF.
+# Run `git add --renormalize .` once after changing this file.
 * text=auto eol=crlf
 
-# Scripts that must stay LF regardless of platform
-/mvnw  text eol=lf
-*.sh   text eol=lf
+# Anything Linux executes must stay LF, on every platform:
+# a CRLF Dockerfile or shell script breaks inside a container.
+Dockerfile      text eol=lf
+Dockerfile.*    text eol=lf
+.dockerignore   text eol=lf
+*.sh            text eol=lf
+/mvnw           text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
 
-# Scripts that must stay CRLF
+# Windows scripts must stay CRLF
 *.cmd  text eol=crlf
 *.bat  text eol=crlf
 
@@ -17,5 +24,6 @@
 *.jpg  binary
 *.jpeg binary
 *.gif  binary
+*.webp binary
 *.mp3  binary
 *.mp4  binary

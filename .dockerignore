@@ -1,0 +1,23 @@
+# Build output - the image builds its own
+target/
+build/
+
+# Never ship local credentials
+src/main/resources/application-local.properties
+.env
+
+# Not needed at runtime
+.git/
+.github/
+.idea/
+.vscode/
+.mvn/
+mvnw
+mvnw.cmd
+db/
+docs/
+postman/
+*.md
+.editorconfig
+.gitattributes
+.gitignore
