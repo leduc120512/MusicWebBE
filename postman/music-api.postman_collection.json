@@ -1,0 +1,3276 @@
+{
+  "info": {
+    "_postman_id": "9b1f6a30-4a52-4f6f-9a0e-6d3f2c8f1a01",
+    "name": "Music API",
+    "description": "Functional and response-contract tests for the Music API (com.musicapi).\n\nHow to run\n  1. Import db/music_db.sql into MySQL.\n  2. Start the app:  ./mvnw spring-boot:run    (default port 8082)\n  3. Import postman/music-api.postman_environment.json and select it.\n  4. Run the collection top to bottom - folder \"01 - Auth\" stores the\n     tokens that every later folder reuses.\n\nEvery request inherits three collection-level tests:\n  * the body must use the {success, message, data} envelope\n  * the success flag must agree with the HTTP status\n  * the message must never contain an internal error string\n\nFolder \"99 - Error contract\" holds the negative cases that previously\nreturned the wrong status, the wrong body shape, or a leaked message.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 - Health",
+      "description": "No token needed. Run these first to confirm the app is up.",
+      "item": [
+        {
+          "name": "GET /api/test",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"API is working\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('API is working');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "test"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Service is healthy\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Service is healthy');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "01 - Auth",
+      "description": "Run this folder first: it stores the tokens the later folders reuse.",
+      "item": [
+        {
+          "name": "POST /signin (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "pm.test('message is \"Login successful\"', function () {",
+                  "    pm.expect(b.message).to.eql('Login successful');",
+                  "});",
+                  "pm.test('a JWT and a user summary come back', function () {",
+                  "    pm.expect(b.data).to.have.property('accessToken');",
+                  "    pm.expect(b.data).to.have.property('user');",
+                  "});",
+                  "if (b.data && b.data.accessToken) {",
+                  "    pm.collectionVariables.set('adminToken', b.data.accessToken);",
+                  "    pm.collectionVariables.set('adminTokenUserId', b.data.user.id);",
+                  "    console.log('admin token stored');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signin"
+              ]
+            },
+            "description": "Stores {{adminToken}}. Seed account duc12 / 123456 (ROLE_ADMIN).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usernameOrEmail\": \"{{adminUsername}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /signin (author)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "pm.test('message is \"Login successful\"', function () {",
+                  "    pm.expect(b.message).to.eql('Login successful');",
+                  "});",
+                  "pm.test('a JWT and a user summary come back', function () {",
+                  "    pm.expect(b.data).to.have.property('accessToken');",
+                  "    pm.expect(b.data).to.have.property('user');",
+                  "});",
+                  "if (b.data && b.data.accessToken) {",
+                  "    pm.collectionVariables.set('authorToken', b.data.accessToken);",
+                  "    pm.collectionVariables.set('authorTokenUserId', b.data.user.id);",
+                  "    console.log('author token stored');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signin"
+              ]
+            },
+            "description": "Stores {{authorToken}}. Seed account user1 / 123456 (ROLE_AUTHOR).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usernameOrEmail\": \"{{authorUsername}}\",\n  \"password\": \"{{authorPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /signin (member)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "pm.test('message is \"Login successful\"', function () {",
+                  "    pm.expect(b.message).to.eql('Login successful');",
+                  "});",
+                  "pm.test('a JWT and a user summary come back', function () {",
+                  "    pm.expect(b.data).to.have.property('accessToken');",
+                  "    pm.expect(b.data).to.have.property('user');",
+                  "});",
+                  "if (b.data && b.data.accessToken) {",
+                  "    pm.collectionVariables.set('memberToken', b.data.accessToken);",
+                  "    pm.collectionVariables.set('memberTokenUserId', b.data.user.id);",
+                  "    console.log('member token stored');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signin"
+              ]
+            },
+            "description": "Stores {{memberToken}}. Seed account hunghn / 1234 (ROLE_USER).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usernameOrEmail\": \"{{memberUsername}}\",\n  \"password\": \"{{memberPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /signup",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('message is \"User registered successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('User registered successfully');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ]
+            },
+            "description": "multipart/form-data. The avatar file slot is optional; leave it empty.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "username",
+                  "value": "pmtest{{$randomInt}}",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "pmtest{{$randomInt}}@example.com",
+                  "type": "text"
+                },
+                {
+                  "key": "fullName",
+                  "value": "Postman Test User",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "123456",
+                  "type": "text"
+                },
+                {
+                  "key": "gender",
+                  "value": "OTHER",
+                  "type": "text"
+                },
+                {
+                  "key": "avatar",
+                  "src": [],
+                  "type": "file"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /me",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Profile retrieved successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Profile retrieved successfully');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /me",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Profile updated successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Profile updated successfully');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "fullName",
+                  "value": "Updated From Postman",
+                  "type": "text"
+                },
+                {
+                  "key": "gender",
+                  "value": "MALE",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /users (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Users retrieved successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Users retrieved successfully');",
+                  "});",
+                  "pm.test('no password field is ever serialised', function () {",
+                  "    pm.expect(JSON.stringify(pm.response.json().data)).to.not.include('password');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "users"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /users/{id} (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"User retrieved successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('User retrieved successfully');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/users/{{memberTokenUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "users",
+                "{{memberTokenUserId}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /users/{id} (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"User updated successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('User updated successfully');",
+                  "});",
+                  "pm.test('the message is not dumped into data', function () {",
+                  "    pm.expect(pm.response.json().data).to.not.eql('User updated successfully');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/users/{{memberTokenUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "users",
+                "{{memberTokenUserId}}"
+              ]
+            },
+            "description": "REGRESSION GUARD.\nBefore the fix this returned {\"success\":true,\"message\":\"Success\",\n\"data\":\"User updated successfully\"} because ApiResponse.success(String)\nresolved to success(T data) instead of success(message, data).",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "fullName",
+                  "value": "Renamed By Admin",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 - Songs",
+      "description": "Public reads need no token.",
+      "item": [
+        {
+          "name": "GET /api/songs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "const d = pm.response.json().data;",
+                  "const list = Array.isArray(d) ? d : (d && d.content) || [];",
+                  "if (list.length) {",
+                  "    pm.collectionVariables.set('songId', list[0].id);",
+                  "} else {",
+                  "    console.warn('no song returned - later requests in this folder will be skipped');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/songs?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "songs"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/songs/latest",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/songs/latest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "songs",
+                "latest"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/songs/popular",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/songs/popular",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "songs",
+                "popular"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/songs/trending",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/songs/trending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "songs",
+                "trending"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/songs/{id}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/songs/{{songId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "songs",
+                "{{songId}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/songs/search",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/songs/search?keyword=a",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "songs",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "a"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/songs/public/active",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/songs/public/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "songs",
+                "public",
+                "active"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/songs/public/top5-playcount",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/songs/public/top5-playcount",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "songs",
+                "public",
+                "top5-playcount"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /api/songs/{id}/lyrics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Lyrics updated successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Lyrics updated successfully');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/songs/{{songId}}/lyrics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "songs",
+                "{{songId}}",
+                "lyrics"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lyrics\": \"Lyrics updated from the Postman run\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 - Albums",
+      "description": "",
+      "item": [
+        {
+          "name": "GET /api/albums",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "const d = pm.response.json().data;",
+                  "const list = Array.isArray(d) ? d : (d && d.content) || [];",
+                  "if (list.length) {",
+                  "    pm.collectionVariables.set('albumId', list[0].id);",
+                  "} else {",
+                  "    console.warn('no album returned - later requests in this folder will be skipped');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/albums/latest",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/latest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "latest"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/albums/{id}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/{{albumId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "{{albumId}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/albums/search",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/albums/search?keyword=a",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "albums",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "a"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 - Genres",
+      "description": "Reads are public; writes need ROLE_ADMIN.",
+      "item": [
+        {
+          "name": "GET /api/genres",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Genres retrieved\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Genres retrieved');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/genres",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "genres"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/genres (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Genre created successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Genre created successfully');",
+                  "});",
+                  "const d = pm.response.json().data;",
+                  "if (d && d.id) { pm.collectionVariables.set('createdGenreId', d.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/genres",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "genres"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Genre {{$randomInt}}\",\n  \"description\": \"created by the Postman run\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /api/genres/{id} (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Genre updated successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Genre updated successfully');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/genres/{{createdGenreId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "genres",
+                "{{createdGenreId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Genre renamed {{$randomInt}}\",\n  \"description\": \"updated by the Postman run\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /api/genres/{id} (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Genre deleted successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Genre deleted successfully');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/genres/{{createdGenreId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "genres",
+                "{{createdGenreId}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "05 - Likes",
+      "description": "Everything except the public like-count needs a token.",
+      "item": [
+        {
+          "name": "POST /api/likes/{songId}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/likes/{{songId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "likes",
+                "{{songId}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/likes/status/{songId}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Like status retrieved\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Like status retrieved');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/likes/status/{{songId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "likes",
+                "status",
+                "{{songId}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/likes/song/{songId}/count",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Like count retrieved\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Like count retrieved');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/likes/song/{{songId}}/count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "likes",
+                "song",
+                "{{songId}}",
+                "count"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/likes/my",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Liked songs retrieved successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Liked songs retrieved successfully');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/likes/my?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "likes",
+                "my"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /api/likes/{songId}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/likes/{{songId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "likes",
+                "{{songId}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06 - Comments",
+      "description": "",
+      "item": [
+        {
+          "name": "GET /song/{songId}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/song/{{songId}}?page=0&size=20&replySize=3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "comments",
+                "song",
+                "{{songId}}"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                },
+                {
+                  "key": "replySize",
+                  "value": "3"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "POST /song/{songId}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "const d = pm.response.json().data;",
+                  "if (d && d.id) { pm.collectionVariables.set('commentId', d.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/song/{{songId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "comments",
+                "song",
+                "{{songId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Comment from the Postman run\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /{commentId}/replies",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/{{commentId}}/replies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "comments",
+                "{{commentId}}",
+                "replies"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Reply from the Postman run\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /{commentId}/replies",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/{{commentId}}/replies?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "comments",
+                "{{commentId}}",
+                "replies"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /{commentId}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Comment updated successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Comment updated successfully');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/{{commentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "comments",
+                "{{commentId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Comment edited from the Postman run\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /{commentId}/report",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/{{commentId}}/report",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "comments",
+                "{{commentId}}",
+                "report"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"SPAM\",\n  \"detail\": \"Reported from the Postman run\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /{commentId}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Comment deleted successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Comment deleted successfully');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/{{commentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "comments",
+                "{{commentId}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "07 - Play history",
+      "description": "",
+      "item": [
+        {
+          "name": "GET /recent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/history/recent?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "history",
+                "recent"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /count/song/{songId}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/history/count/song/{{songId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "history",
+                "count",
+                "song",
+                "{{songId}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /count/user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/history/count/user",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "history",
+                "count",
+                "user"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "08 - Favorite albums",
+      "description": "Stored in the playlists table - see the note in db/README.md.",
+      "item": [
+        {
+          "name": "POST /api/favorite-albums",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "const d = pm.response.json().data;",
+                  "if (d && d.id) { pm.collectionVariables.set('favoriteAlbumId', d.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/favorite-albums",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "favorite-albums"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman favourites {{$randomInt}}\",\n  \"description\": \"created by the Postman run\",\n  \"isPublic\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /my",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/favorite-albums/my",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "favorite-albums",
+                "my"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "POST /{albumId}/songs/{songId}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/favorite-albums/{{favoriteAlbumId}}/songs/{{songId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "favorite-albums",
+                "{{favoriteAlbumId}}",
+                "songs",
+                "{{songId}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /{albumId}/songs/{songId}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/favorite-albums/{{favoriteAlbumId}}/songs/{{songId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "favorite-albums",
+                "{{favoriteAlbumId}}",
+                "songs",
+                "{{songId}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /{albumId}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Favorite album deleted successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Favorite album deleted successfully');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/favorite-albums/{{favoriteAlbumId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "favorite-albums",
+                "{{favoriteAlbumId}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "09 - Banners",
+      "description": "Reads are public; writes need ROLE_ADMIN.",
+      "item": [
+        {
+          "name": "GET /api/banners",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Banners retrieved successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Banners retrieved successfully');",
+                  "});",
+                  "const d = pm.response.json().data;",
+                  "if (Array.isArray(d) && d.length) { pm.collectionVariables.set('bannerId', d[0].id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/banners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "banners"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/banners/{id}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Banner retrieved successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Banner retrieved successfully');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/banners/{{bannerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "banners",
+                "{{bannerId}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/banners/{id} - not found",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', function () { pm.response.to.have.status(404); });",
+                  "pm.test('message is \"Banner not found\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Banner not found');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/banners/99999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "banners",
+                "99999999"
+              ]
+            },
+            "description": "REGRESSION GUARD.\nBannerController used to return a bare ApiResponse, so a missing banner\nstill came back as HTTP 200 with success:false."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "10 - Popup ads",
+      "description": "The active popup is public; the rest need ROLE_ADMIN.",
+      "item": [
+        {
+          "name": "GET /active",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Active popup ad retrieved successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Active popup ad retrieved successfully');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/popup-ads/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "popup-ads",
+                "active"
+              ]
+            },
+            "description": "REGRESSION GUARD. This message used to be written without diacritics\n(\"Popup dang hien thi\")."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/popup-ads (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Popup ads retrieved successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Popup ads retrieved successfully');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/popup-ads",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "popup-ads"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "11 - Artist requests",
+      "description": "",
+      "item": [
+        {
+          "name": "POST /me",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created, or 409 because a request is already pending', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 409]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/artist-requests/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "artist-requests",
+                "me"
+              ]
+            },
+            "description": "Not idempotent: a member may only have one pending request, so a second run legitimately answers 409.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"I would like to publish my own tracks\",\n  \"portfolioUrl\": \"https://example.com/portfolio\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /me",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Request history retrieved successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Request history retrieved successfully');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/artist-requests/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "artist-requests",
+                "me"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "12 - Song violation reports",
+      "description": "",
+      "item": [
+        {
+          "name": "POST /songs/{songId}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/song-violation-reports/songs/{{songId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "song-violation-reports",
+                "songs",
+                "{{songId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"COPYRIGHT\",\n  \"description\": \"Reported from the Postman run\",\n  \"evidenceUrl\": \"https://example.com/evidence\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /my",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Your reports retrieved successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Your reports retrieved successfully');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/song-violation-reports/my",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "song-violation-reports",
+                "my"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "13 - Artist studio",
+      "description": "Needs ROLE_AUTHOR or ROLE_ADMIN.",
+      "item": [
+        {
+          "name": "GET /me/dashboard",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/artist-studio/me/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "artist-studio",
+                "me",
+                "dashboard"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /me/songs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/artist-studio/me/songs?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "artist-studio",
+                "me",
+                "songs"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /me/profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/artist-studio/me/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "artist-studio",
+                "me",
+                "profile"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /me/news",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/artist-studio/me/news?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "artist-studio",
+                "me",
+                "news"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "14 - Admin moderation",
+      "description": "Needs ROLE_ADMIN.",
+      "item": [
+        {
+          "name": "GET /dashboard",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/moderation/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "moderation",
+                "dashboard"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /artist-requests",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('message is \"Artist requests retrieved successfully\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Artist requests retrieved successfully');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/moderation/artist-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "moderation",
+                "artist-requests"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /song-violation-reports",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/moderation/song-violation-reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "moderation",
+                "song-violation-reports"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "GET /comment-reports",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/moderation/comment-reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "moderation",
+                "comment-reports"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "99 - Error contract",
+      "description": "Negative cases. These are the responses that used to carry the wrong status,\nthe wrong body shape, or a leaked internal message.",
+      "item": [
+        {
+          "name": "Wrong password -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('message is \"Invalid username/email or password\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Invalid username/email or password');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signin"
+              ]
+            },
+            "description": "REGRESSION GUARD. This used to answer 400 Bad Request.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usernameOrEmail\": \"{{adminUsername}}\",\n  \"password\": \"definitely-not-the-password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Malformed JSON -> 400 with a clean message",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('the Jackson parser error is not handed to the client', function () {",
+                  "    pm.expect(pm.response.json().message).to.not.include('JSON parse error');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signin"
+              ]
+            },
+            "description": "REGRESSION GUARD.\nThe response captured in the old signin.json was:\n  \"JSON parse error: Unexpected character ('u' (code 117)): was expecting\n   double-quote to start field name\"\ni.e. raw Jackson internals returned to the caller.",
+            "body": {
+              "mode": "raw",
+              "raw": "{ usernameOrEmail: \"duc12\", password: \"123456\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Empty credentials -> 400 validation message",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signin"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usernameOrEmail\": \"\",\n  \"password\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "No token -> 401 in the same envelope",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('401 uses the same envelope as every other response', function () {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b).to.have.property('success', false);",
+                  "    pm.expect(b).to.have.property('message');",
+                  "    pm.expect(b).to.have.property('data');",
+                  "    pm.expect(b).to.not.have.property('timestamp');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/likes/my",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "likes",
+                "my"
+              ]
+            },
+            "description": "REGRESSION GUARD.\nJwtAuthenticationEntryPoint called response.sendError(), so Spring rendered\nits whitelabel body {timestamp,status,error,path} instead of the envelope."
+          },
+          "response": []
+        },
+        {
+          "name": "Member token on an admin route -> 403 in the same envelope",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', function () { pm.response.to.have.status(403); });",
+                  "pm.test('403 uses the same envelope', function () {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b).to.have.property('success', false);",
+                  "    pm.expect(b).to.not.have.property('timestamp');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/moderation/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "moderation",
+                "dashboard"
+              ]
+            },
+            "description": "REGRESSION GUARD. No AccessDeniedHandler was registered, so 403 fell back\nto Spring Security default body."
+          },
+          "response": []
+        },
+        {
+          "name": "Unknown endpoint -> 404 in the same envelope",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', function () { pm.response.to.have.status(404); });",
+                  "pm.test('message is \"Endpoint not found\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Endpoint not found');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/this-does-not-exist",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "this-does-not-exist"
+              ]
+            },
+            "description": "A token is needed to reach the 404: Spring Security evaluates\nanyRequest().authenticated() before routing, so an anonymous call to an\nunknown path answers 401 rather than revealing which endpoints exist."
+          },
+          "response": []
+        },
+        {
+          "name": "Unknown endpoint, no token -> 401 (by design)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/this-does-not-exist",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "this-does-not-exist"
+              ]
+            },
+            "description": "Documented so the 401 is not mistaken for a bug: anonymous callers\ncannot probe for which endpoints exist."
+          },
+          "response": []
+        },
+        {
+          "name": "Wrong HTTP verb -> 405 in the same envelope",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 405', function () { pm.response.to.have.status(405); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signin"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Non-numeric path variable -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/songs/not-a-number",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "songs",
+                "not-a-number"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const ct = pm.response.headers.get('Content-Type') || '';",
+          "if (!ct.includes('application/json')) { return; }",
+          "",
+          "let body;",
+          "try { body = pm.response.json(); } catch (e) { return; }",
+          "if (Array.isArray(body)) { return; }",
+          "",
+          "pm.test('Body uses the {success, message, data} envelope', function () {",
+          "    pm.expect(body).to.have.property('success');",
+          "    pm.expect(body).to.have.property('message');",
+          "    pm.expect(body).to.have.property('data');",
+          "});",
+          "",
+          "pm.test('success flag agrees with the HTTP status', function () {",
+          "    const is2xx = pm.response.code >= 200 && pm.response.code < 300;",
+          "    pm.expect(body.success, 'success for HTTP ' + pm.response.code).to.eql(is2xx);",
+          "});",
+          "",
+          "pm.test('message is present and leaks no internals', function () {",
+          "    pm.expect(body.message, 'message').to.be.a('string').and.to.have.length.above(0);",
+          "    pm.expect(body.message, 'message must not expose internals')",
+          "        .to.not.match(/Exception|JSON parse error|at com\\.musicapi|SQLException|Hibernate|nested exception/i);",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8082"
+    },
+    {
+      "key": "adminUsername",
+      "value": "duc12"
+    },
+    {
+      "key": "adminPassword",
+      "value": "123456"
+    },
+    {
+      "key": "authorUsername",
+      "value": "user1"
+    },
+    {
+      "key": "authorPassword",
+      "value": "123456"
+    },
+    {
+      "key": "memberUsername",
+      "value": "hunghn"
+    },
+    {
+      "key": "memberPassword",
+      "value": "1234"
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "authorToken",
+      "value": ""
+    },
+    {
+      "key": "memberToken",
+      "value": ""
+    },
+    {
+      "key": "adminTokenUserId",
+      "value": ""
+    },
+    {
+      "key": "authorTokenUserId",
+      "value": ""
+    },
+    {
+      "key": "memberTokenUserId",
+      "value": ""
+    },
+    {
+      "key": "songId",
+      "value": ""
+    },
+    {
+      "key": "albumId",
+      "value": ""
+    },
+    {
+      "key": "createdGenreId",
+      "value": ""
+    },
+    {
+      "key": "commentId",
+      "value": ""
+    },
+    {
+      "key": "bannerId",
+      "value": ""
+    },
+    {
+      "key": "favoriteAlbumId",
+      "value": ""
+    }
+  ]
+}

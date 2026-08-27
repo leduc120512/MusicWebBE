@@ -20,10 +20,10 @@ public interface AlbumRepository extends JpaRepository<Album, Long> {
 
     @Query("SELECT a FROM Album a WHERE a.title LIKE %:keyword%")
     Page<Album> searchByTitle(@Param("keyword") String keyword, Pageable pageable);
-    
+
     @Query("SELECT a FROM Album a WHERE a.artist.fullName LIKE %:keyword%")
     Page<Album> searchByArtistName(@Param("keyword") String keyword, Pageable pageable);
-    
+
     @Query("SELECT a FROM Album a ORDER BY a.createdAt DESC")
     Page<Album> findLatestAlbums(Pageable pageable);
 }

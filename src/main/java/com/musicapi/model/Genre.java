@@ -32,7 +32,6 @@ public class Genre {
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
-    // 🔥 DÒNG FIX LỖI NẰM Ở ĐÂY
     @OneToMany(mappedBy = "genre", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
     private Set<Song> songs = new HashSet<>();

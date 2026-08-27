@@ -15,25 +15,25 @@ import java.util.Optional;
 @Repository
 public interface LikeRepository extends JpaRepository<Like, Long> {
 
-    // Tìm Like theo User và Song
+    // Find a like by user and song
     Optional<Like> findByUserAndSong(User user, Song song);
 
-    // Kiểm tra Like có tồn tại theo đối tượng
+    // Whether the like exists, matched by entity
     boolean existsByUserAndSong(User user, Song song);
 
-    // ✅ Thêm method mới: kiểm tra Like theo ID
+    // Whether the like exists, matched by id
     boolean existsByUser_IdAndSong_Id(Long userId, Long songId);
 
     void deleteByUserAndSong(User user, Song song);
 
-    // Lấy danh sách bài hát đã like bởi User
+    // Songs liked by the given user
     @Query("SELECT l.song FROM Like l WHERE l.user = :user ORDER BY l.createdAt DESC")
     Page<Song> findLikedSongsByUser(@Param("user") User user, Pageable pageable);
 
     @Query("SELECT l.song FROM Like l WHERE l.user.id = :userId ORDER BY l.createdAt DESC")
     Page<Song> findLikedSongsByUserId(@Param("userId") Long userId, Pageable pageable);
 
-    // Đếm số lượt like theo bài hát
+    // Count likes for a song
     @Query("SELECT COUNT(l) FROM Like l WHERE l.song = :song")
     Long countLikesBySong(@Param("song") Song song);
 

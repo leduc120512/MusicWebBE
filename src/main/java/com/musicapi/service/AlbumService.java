@@ -1,5 +1,7 @@
 package com.musicapi.service;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import com.musicapi.dto.AlbumResponse;
 import com.musicapi.dto.SongResponse;
 import com.musicapi.model.Album;
@@ -15,6 +17,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -22,42 +25,47 @@ import java.util.stream.Collectors;
 @Service
 public class AlbumService {
 
-    @Autowired
-    private AlbumRepository albumRepository;
+    private final AlbumRepository albumRepository;
+    private final UserRepository userRepository;
+    private final LikeRepository likeRepository;
 
-    @Autowired
-    private LikeRepository likeRepository;
-    @Autowired
-    private UserRepository userRepository;
+    public AlbumService(AlbumRepository albumRepository, LikeRepository likeRepository, UserRepository userRepository) {
+        this.albumRepository = albumRepository;
+        this.likeRepository = likeRepository;
+        this.userRepository = userRepository;
+    }
 
+
+    @Transactional(readOnly = true)
     public Page<AlbumResponse> getLatestAlbums(int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<Album> albums = albumRepository.findLatestAlbums(pageable);
-        
+
         return albums.map(this::convertToAlbumResponse);
     }
 
+    @Transactional(readOnly = true)
     public Page<AlbumResponse> searchAlbums(String keyword, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Album> albums = albumRepository.searchByTitle(keyword, pageable);
-        
+
         return albums.map(this::convertToAlbumResponse);
     }
     public Album createAlbum(Album album, UserPrincipal currentUser) {
         User artist = userRepository.findById(currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("Artist not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Artist not found"));
 
-        album.setId(null); // để tránh bị update nhầm nếu frontend gửi lên ID
+        album.setId(null); // ignore any id sent by the frontend
         album.setArtist(artist);
         return albumRepository.save(album);
     }
 
     public Album updateAlbum(Long id, Album albumUpdate, UserPrincipal currentUser) {
         Album existing = albumRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Album not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Album not found"));
 
         if (!existing.getArtist().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("You are not allowed to update this album");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not allowed to update this album");
         }
 
         existing.setTitle(albumUpdate.getTitle());
@@ -70,31 +78,32 @@ public class AlbumService {
 
     public void deleteAlbum(Long id, UserPrincipal currentUser) {
         Album album = albumRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Album not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Album not found"));
 
         if (!album.getArtist().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("You are not allowed to delete this album");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not allowed to delete this album");
         }
 
         albumRepository.delete(album);
     }
+    @Transactional(readOnly = true)
     public AlbumResponse getAlbumById(Long id, UserPrincipal currentUser) {
         Album album = albumRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Album not found"));
-        
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Album not found"));
+
         AlbumResponse response = convertToAlbumResponse(album);
-        
+
         // Convert songs with like status
         List<SongResponse> songResponses = album.getSongs().stream()
                 .map(song -> convertToSongResponse(song, currentUser))
                 .collect(Collectors.toList());
-        
+
         response.setSongs(songResponses);
         return response;
     }
     public Album getByIdOrThrow(Long id) {
         return albumRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Album not found with id: " + id));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Album not found with id: " + id));
     }
 
     private AlbumResponse convertToAlbumResponse(Album album) {

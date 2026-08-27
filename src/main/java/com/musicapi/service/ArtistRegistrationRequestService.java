@@ -1,33 +1,38 @@
 package com.musicapi.service;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import com.musicapi.dto.AdminReviewRequestDto;
-import com.musicapi.dto.ArtistRegistrationRequestAdminResponse;
+import com.musicapi.dto.ArtistRegistrationRequestResponse;
 import com.musicapi.dto.ArtistRegistrationRequestCreateDto;
 import com.musicapi.model.*;
 import com.musicapi.repository.ArtistRegistrationRequestRepository;
 import com.musicapi.repository.UserRepository;
-import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 public class ArtistRegistrationRequestService {
-    @Autowired
-    private ArtistRegistrationRequestRepository requestRepository;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final ArtistRegistrationRequestRepository requestRepository;
+    private final UserRepository userRepository;
 
-    public ArtistRegistrationRequest createRequest(Long userId, ArtistRegistrationRequestCreateDto dto) {
+    public ArtistRegistrationRequestService(ArtistRegistrationRequestRepository requestRepository, UserRepository userRepository) {
+        this.requestRepository = requestRepository;
+        this.userRepository = userRepository;
+    }
+
+    @Transactional
+    public ArtistRegistrationRequestResponse createRequest(Long userId, ArtistRegistrationRequestCreateDto dto) {
         requestRepository.findTopByUserIdAndStatusOrderByCreatedAtDesc(userId, ArtistRequestStatus.PENDING)
-                .ifPresent(r -> { throw new RuntimeException("Bạn đã có yêu cầu chờ duyệt"); });
+                .ifPresent(r -> { throw new ResponseStatusException(HttpStatus.CONFLICT, "You already have a request awaiting review"); });
 
         User user = getUser(userId);
         if (user.getRole() == Role.ROLE_AUTHOR || user.getRole() == Role.ROLE_ADMIN) {
-            throw new RuntimeException("Tài khoản đã là tác giả hoặc admin");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This account is already an artist or an administrator");
         }
 
         ArtistRegistrationRequest request = new ArtistRegistrationRequest();
@@ -35,23 +40,28 @@ public class ArtistRegistrationRequestService {
         request.setReason(dto.getReason());
         request.setPortfolioUrl(dto.getPortfolioUrl());
         request.setStatus(ArtistRequestStatus.PENDING);
-        return requestRepository.save(request);
+        return toResponse(requestRepository.save(request));
     }
 
-    public List<ArtistRegistrationRequest> getMyRequests(Long userId) {
-        return requestRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    @Transactional(readOnly = true)
+    public List<ArtistRegistrationRequestResponse> getMyRequests(Long userId) {
+        return requestRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
-    public ArtistRegistrationRequest cancelMyRequest(Long userId, Long requestId) {
+    @Transactional
+    public ArtistRegistrationRequestResponse cancelMyRequest(Long userId, Long requestId) {
         ArtistRegistrationRequest request = getRequest(requestId);
         if (!request.getUser().getId().equals(userId)) {
-            throw new RuntimeException("Không thể hủy yêu cầu của người khác");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot cancel someone else’s request");
         }
         if (request.getStatus() != ArtistRequestStatus.PENDING) {
-            throw new RuntimeException("Chỉ hủy được yêu cầu đang chờ duyệt");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only a pending request can be cancelled");
         }
         request.setStatus(ArtistRequestStatus.CANCELLED);
-        return requestRepository.save(request);
+        return toResponse(requestRepository.save(request));
     }
 
     public List<ArtistRegistrationRequest> getByStatus(ArtistRequestStatus status) {
@@ -59,34 +69,34 @@ public class ArtistRegistrationRequestService {
     }
 
     @Transactional
-    public List<ArtistRegistrationRequestAdminResponse> getByStatusOrAll(String statusText) {
+    public List<ArtistRegistrationRequestResponse> getByStatusOrAll(String statusText) {
         if (statusText == null || statusText.isBlank() || "ALL".equalsIgnoreCase(statusText.trim())) {
             return requestRepository.findAllByOrderByCreatedAtDesc().stream()
-                    .map(this::toAdminResponse)
+                    .map(this::toResponse)
                     .toList();
         }
 
         ArtistRequestStatus status = ArtistRequestStatus.valueOf(statusText.trim().toUpperCase());
         return getByStatus(status).stream()
-                .map(this::toAdminResponse)
+                .map(this::toResponse)
                 .toList();
     }
 
     @Transactional
-    public ArtistRegistrationRequestAdminResponse reviewRequest(Long adminId, Long requestId, AdminReviewRequestDto dto) {
+    public ArtistRegistrationRequestResponse reviewRequest(Long adminId, Long requestId, AdminReviewRequestDto dto) {
         User admin = getUser(adminId);
         if (admin.getRole() != Role.ROLE_ADMIN) {
-            throw new RuntimeException("Chỉ admin mới được duyệt");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only an administrator can review this request");
         }
 
         ArtistRegistrationRequest request = getRequest(requestId);
         if (request.getStatus() != ArtistRequestStatus.PENDING) {
-            throw new RuntimeException("Yêu cầu này đã được xử lý trước đó");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This request has already been resolved");
         }
 
         ArtistRequestStatus nextStatus = ArtistRequestStatus.valueOf(dto.getStatus().trim().toUpperCase());
         if (nextStatus != ArtistRequestStatus.APPROVED && nextStatus != ArtistRequestStatus.REJECTED) {
-            throw new RuntimeException("Status hợp lệ: APPROVED hoặc REJECTED");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Status must be APPROVED or REJECTED");
         }
 
         request.setStatus(nextStatus);
@@ -100,11 +110,11 @@ public class ArtistRegistrationRequestService {
             userRepository.save(user);
         }
 
-        return toAdminResponse(requestRepository.save(request));
+        return toResponse(requestRepository.save(request));
     }
 
-    private ArtistRegistrationRequestAdminResponse toAdminResponse(ArtistRegistrationRequest request) {
-        ArtistRegistrationRequestAdminResponse response = new ArtistRegistrationRequestAdminResponse();
+    private ArtistRegistrationRequestResponse toResponse(ArtistRegistrationRequest request) {
+        ArtistRegistrationRequestResponse response = new ArtistRegistrationRequestResponse();
         response.setId(request.getId());
         response.setReason(request.getReason());
         response.setPortfolioUrl(request.getPortfolioUrl());
@@ -132,11 +142,11 @@ public class ArtistRegistrationRequestService {
     }
 
     private User getUser(Long id) {
-        return userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        return userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
     private ArtistRegistrationRequest getRequest(Long id) {
-        return requestRepository.findById(id).orElseThrow(() -> new RuntimeException("Request not found"));
+        return requestRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
     }
 }
 

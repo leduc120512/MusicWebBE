@@ -2,7 +2,6 @@ package com.musicapi.service;
 
 import com.musicapi.model.Banner;
 import com.musicapi.repository.BannerRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -12,8 +11,11 @@ import java.util.List;
 @Service
 public class BannerService {
 
-    @Autowired
-    private BannerRepository bannerRepository;
+    private final BannerRepository bannerRepository;
+
+    public BannerService(BannerRepository bannerRepository) {
+        this.bannerRepository = bannerRepository;
+    }
 
     public List<Banner> getAll() {
         return bannerRepository.findAll();
@@ -33,7 +35,7 @@ public class BannerService {
         return bannerRepository.save(banner);
     }
 
-    // Update KHÔNG làm mất ảnh cũ
+    // Update must not drop the existing image
     public Banner update(Long id, Banner newBanner) {
         Banner banner = getById(id);
 
@@ -49,7 +51,7 @@ public class BannerService {
     }
 
     public void delete(Long id) {
-        Banner banner = getById(id); // đảm bảo tồn tại
+        Banner banner = getById(id); // fails with 404 when it does not exist
         bannerRepository.delete(banner);
     }
 }

@@ -1,2 +1,21 @@
-/mvnw text eol=lf
-*.cmd text eol=crlf
+# Working tree is Windows/CRLF (see .editorconfig); Git stores LF and checks out CRLF.
+# Run `git add --renormalize .` once after adopting this file.
+* text=auto eol=crlf
+
+# Scripts that must stay LF regardless of platform
+/mvnw  text eol=lf
+*.sh   text eol=lf
+
+# Scripts that must stay CRLF
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+
+# Never touch binaries
+*.jar  binary
+*.zip  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.mp3  binary
+*.mp4  binary

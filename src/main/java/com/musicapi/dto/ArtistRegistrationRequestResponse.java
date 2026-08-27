@@ -4,7 +4,7 @@ import com.musicapi.model.ArtistRequestStatus;
 
 import java.time.LocalDateTime;
 
-public class ArtistRegistrationRequestAdminResponse {
+public class ArtistRegistrationRequestResponse {
     private Long id;
     private Long userId;
     private String username;

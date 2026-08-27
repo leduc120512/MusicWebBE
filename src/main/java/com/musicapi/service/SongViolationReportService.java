@@ -1,5 +1,7 @@
 package com.musicapi.service;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import com.musicapi.dto.AdminReviewRequestDto;
 import com.musicapi.dto.SongViolationReportCreateDto;
 import com.musicapi.dto.SongViolationReportResponse;
@@ -7,7 +9,6 @@ import com.musicapi.model.*;
 import com.musicapi.repository.SongRepository;
 import com.musicapi.repository.SongViolationReportRepository;
 import com.musicapi.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -16,20 +17,25 @@ import java.util.Map;
 
 @Service
 public class SongViolationReportService {
+
+    private final SongViolationReportRepository reportRepository;
+    private final SongRepository songRepository;
+    private final UserRepository userRepository;
+
+    public SongViolationReportService(
+            SongViolationReportRepository reportRepository,
+            SongRepository songRepository,
+            UserRepository userRepository
+    ) {
+        this.reportRepository = reportRepository;
+        this.songRepository = songRepository;
+        this.userRepository = userRepository;
+    }
     private static final long ADMIN_PRIORITY_REPORT_THRESHOLD = 15L;
-
-    @Autowired
-    private SongViolationReportRepository reportRepository;
-
-    @Autowired
-    private SongRepository songRepository;
-
-    @Autowired
-    private UserRepository userRepository;
 
     public SongViolationReportResponse createReport(Long reporterId, Long songId, SongViolationReportCreateDto dto) {
         User reporter = getUser(reporterId);
-        Song song = songRepository.findById(songId).orElseThrow(() -> new RuntimeException("Song not found"));
+        Song song = songRepository.findById(songId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Song not found"));
 
         SongViolationReport report = new SongViolationReport();
         report.setReporter(reporter);
@@ -88,15 +94,15 @@ public class SongViolationReportService {
     public SongViolationReportResponse reviewReport(Long adminId, Long reportId, AdminReviewRequestDto dto) {
         User admin = getUser(adminId);
         if (admin.getRole() != Role.ROLE_ADMIN) {
-            throw new RuntimeException("Chỉ admin mới được xử lý");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only an administrator can resolve this report");
         }
 
         SongViolationReport report = reportRepository.findById(reportId)
-                .orElseThrow(() -> new RuntimeException("Report not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Report not found"));
 
         ViolationReportStatus nextStatus = ViolationReportStatus.valueOf(dto.getStatus().trim().toUpperCase());
         if (nextStatus != ViolationReportStatus.RESOLVED && nextStatus != ViolationReportStatus.REJECTED) {
-            throw new RuntimeException("Status hợp lệ: RESOLVED hoặc REJECTED");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Status must be RESOLVED or REJECTED");
         }
 
         report.setStatus(nextStatus);
@@ -157,6 +163,6 @@ public class SongViolationReportService {
     }
 
     private User getUser(Long id) {
-        return userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        return userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 }

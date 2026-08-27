@@ -1,10 +1,9 @@
 package com.musicapi.service;
 
-
-
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import com.musicapi.model.Genre;
 import com.musicapi.repository.GenreRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,13 +11,16 @@ import java.util.List;
 @Service
 public class GenreService {
 
-    @Autowired
-    private GenreRepository genreRepository;
+    private final GenreRepository genreRepository;
+
+    public GenreService(GenreRepository genreRepository) {
+        this.genreRepository = genreRepository;
+    }
 
     /* ================= CREATE ================= */
     public Genre createGenre(Genre genre) {
         if (genreRepository.existsByNameIgnoreCase(genre.getName())) {
-            throw new RuntimeException("Genre already exists");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Genre already exists");
         }
         return genreRepository.save(genre);
     }
@@ -26,7 +28,7 @@ public class GenreService {
     /* ================= UPDATE ================= */
     public Genre updateGenre(Long id, Genre updated) {
         Genre genre = genreRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Genre not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Genre not found"));
 
         genre.setName(updated.getName());
         genre.setDescription(updated.getDescription());
@@ -37,11 +39,11 @@ public class GenreService {
     /* ================= DELETE ================= */
     public void deleteGenre(Long id) {
         Genre genre = genreRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Genre not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Genre not found"));
 
-        // ⚠️ nếu muốn chặn xóa khi còn bài hát
+        // enable to block deletion while songs still reference it
         if (!genre.getSongs().isEmpty()) {
-            throw new RuntimeException("Cannot delete genre with existing songs");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Cannot delete genre with existing songs");
         }
 
         genreRepository.delete(genre);
@@ -50,7 +52,7 @@ public class GenreService {
     /* ================= GET ================= */
     public Genre getById(Long id) {
         return genreRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Genre not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Genre not found"));
     }
 
     public List<Genre> getAllGenres() {

@@ -2,8 +2,9 @@ package com.musicapi.config;
 
 import com.musicapi.security.CustomUserDetailsService;
 import com.musicapi.security.JwtAuthenticationEntryPoint;
+import com.musicapi.security.JwtAccessDeniedHandler;
 import com.musicapi.security.JwtAuthenticationFilter;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.musicapi.security.JwtTokenProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -19,7 +20,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import java.util.List;
 
 @Configuration
@@ -27,20 +28,34 @@ import java.util.List;
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-    @Autowired
-    private JwtAuthenticationEntryPoint unauthorizedHandler;
+    private final JwtAuthenticationEntryPoint unauthorizedHandler;
+    private final CustomUserDetailsService customUserDetailsService;
+    private final JwtAccessDeniedHandler accessDeniedHandler;
 
-    @Autowired
-    private CustomUserDetailsService customUserDetailsService;
-
-    @Bean
-    public JwtAuthenticationFilter jwtAuthenticationFilter() {
-        return new JwtAuthenticationFilter();
+    public SecurityConfig(
+            JwtAuthenticationEntryPoint unauthorizedHandler,
+            CustomUserDetailsService customUserDetailsService,
+            JwtAccessDeniedHandler accessDeniedHandler
+    ) {
+        this.unauthorizedHandler = unauthorizedHandler;
+        this.customUserDetailsService = customUserDetailsService;
+        this.accessDeniedHandler = accessDeniedHandler;
     }
 
     @Bean
+    public JwtAuthenticationFilter jwtAuthenticationFilter(JwtTokenProvider tokenProvider) {
+        return new JwtAuthenticationFilter(tokenProvider, customUserDetailsService);
+    }
+
+    /**
+     * BCrypt, not NoOp. Passwords were previously stored and compared in clear
+     * text, which also locked out every account whose row already held a BCrypt
+     * hash. See db/patches/2026-08-27-hash-plaintext-passwords.sql for the
+     * migration that re-hashed the remaining clear-text rows.
+     */
+    @Bean
     public PasswordEncoder passwordEncoder() {
-        return NoOpPasswordEncoder.getInstance();
+        return new BCryptPasswordEncoder();
     }
 
     @Bean
@@ -70,11 +85,15 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(org.springframework.security.config.annotation.web.builders.HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(
+            org.springframework.security.config.annotation.web.builders.HttpSecurity http,
+            JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
                 .cors(c -> c.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
-                .exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedHandler))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(unauthorizedHandler)
+                        .accessDeniedHandler(accessDeniedHandler))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // static
@@ -85,8 +104,13 @@ public class SecurityConfig {
                                 "/css/**", "/js/**", "/images/**", "/webjars/**"
                         ).permitAll()
 
-                        // public APIs
-                        .requestMatchers("/api/auth/**").permitAll()
+                        // API documentation
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+
+                        // public APIs - only the two entry points are anonymous;
+                        // everything else under /api/auth needs a token
+                        .requestMatchers("/api/auth/signin", "/api/auth/signup").permitAll()
+                        .requestMatchers("/api/auth/**").authenticated()
                         .requestMatchers("/api/test", "/api/health").permitAll()
                         .requestMatchers("/api/songs/public/**").permitAll()
 
@@ -99,10 +123,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/comments/song/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/comments/*/replies").permitAll()
 
-                        // public song update endpoints
-                        .requestMatchers(HttpMethod.PUT, "/api/songs/*").permitAll()
-                        .requestMatchers(HttpMethod.PATCH, "/api/songs/*").permitAll()
-                        .requestMatchers(HttpMethod.PATCH, "/api/songs/*/lyrics").permitAll()
+                        // song writes belong to the owning author or an admin
+                        .requestMatchers(HttpMethod.PUT, "/api/songs/*").hasAnyRole("AUTHOR", "ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/songs/*").hasAnyRole("AUTHOR", "ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/songs/*/lyrics").hasAnyRole("AUTHOR", "ADMIN")
 
                         // protect song create, delete and moderation paths
                         .requestMatchers(HttpMethod.POST, "/api/songs/*").hasAnyRole("AUTHOR", "ADMIN")
@@ -123,7 +147,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/banners/*").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/banners/*").hasRole("ADMIN")
 
-                        // 🎧 genres (👇 THÊM PHẦN NÀY)
+                        // genres
                         .requestMatchers(HttpMethod.GET, "/api/genres/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/genres/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/genres/**").hasRole("ADMIN")
@@ -138,7 +162,7 @@ public class SecurityConfig {
 ;
 
         http.authenticationProvider(authenticationProvider());
-        http.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }

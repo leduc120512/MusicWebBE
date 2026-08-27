@@ -4,17 +4,21 @@ import com.musicapi.dto.*;
 import com.musicapi.security.UserPrincipal;
 import com.musicapi.service.CommentService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/comments")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "*")@Tag(name = "Comments", description = "Comments and replies on songs")
 public class CommentController {
-    @Autowired
-    private CommentService commentService;
+
+    private final CommentService commentService;
+
+    public CommentController(CommentService commentService) {
+        this.commentService = commentService;
+    }
 
     @GetMapping("/song/{songId}")
     public ResponseEntity<?> getSongComments(
@@ -23,12 +27,8 @@ public class CommentController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "3") int replySize
     ) {
-        try {
-            return ResponseEntity.ok(ApiResponse.success("Danh sách bình luận",
-                    commentService.getSongComments(songId, page, size, replySize)));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Không lấy được bình luận: " + e.getMessage()));
-        }
+        return ResponseEntity.ok(ApiResponse.success("Danh sách bình luận",
+                commentService.getSongComments(songId, page, size, replySize)));
     }
 
     @GetMapping("/{commentId}/replies")
@@ -37,12 +37,8 @@ public class CommentController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        try {
-            return ResponseEntity.ok(ApiResponse.success("Danh sách phản hồi",
-                    commentService.getReplies(commentId, page, size)));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Không lấy được phản hồi: " + e.getMessage()));
-        }
+        return ResponseEntity.ok(ApiResponse.success("Danh sách phản hồi",
+                commentService.getReplies(commentId, page, size)));
     }
 
     @PostMapping("/song/{songId}")
@@ -51,12 +47,8 @@ public class CommentController {
             @PathVariable Long songId,
             @Valid @RequestBody CommentCreateRequest request
     ) {
-        try {
-            return ResponseEntity.ok(ApiResponse.success("Bình luận thành công",
-                    commentService.createComment(currentUser.getId(), songId, request)));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Bình luận thất bại: " + e.getMessage()));
-        }
+        return ResponseEntity.ok(ApiResponse.success("Comment posted successfully",
+                commentService.createComment(currentUser.getId(), songId, request)));
     }
 
     @PostMapping("/{commentId}/replies")
@@ -65,12 +57,8 @@ public class CommentController {
             @PathVariable Long commentId,
             @Valid @RequestBody CommentCreateRequest request
     ) {
-        try {
-            return ResponseEntity.ok(ApiResponse.success("Phản hồi thành công",
-                    commentService.replyComment(currentUser.getId(), commentId, request)));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Phản hồi thất bại: " + e.getMessage()));
-        }
+        return ResponseEntity.ok(ApiResponse.success("Reply posted successfully",
+                commentService.replyComment(currentUser.getId(), commentId, request)));
     }
 
     @PutMapping("/{commentId}")
@@ -79,12 +67,8 @@ public class CommentController {
             @PathVariable Long commentId,
             @Valid @RequestBody CommentCreateRequest request
     ) {
-        try {
-            return ResponseEntity.ok(ApiResponse.success("Cập nhật bình luận thành công",
-                    commentService.updateComment(currentUser.getId(), commentId, request)));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Cập nhật thất bại: " + e.getMessage()));
-        }
+        return ResponseEntity.ok(ApiResponse.success("Comment updated successfully",
+                commentService.updateComment(currentUser.getId(), commentId, request)));
     }
 
     @DeleteMapping("/{commentId}")
@@ -92,12 +76,8 @@ public class CommentController {
             @AuthenticationPrincipal UserPrincipal currentUser,
             @PathVariable Long commentId
     ) {
-        try {
-            commentService.deleteComment(currentUser.getId(), commentId);
-            return ResponseEntity.ok(ApiResponse.success("Xóa bình luận thành công", null));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Xóa thất bại: " + e.getMessage()));
-        }
+        commentService.deleteComment(currentUser.getId(), commentId);
+        return ResponseEntity.ok(ApiResponse.success("Comment deleted successfully", null));
     }
 
     @PostMapping("/{commentId}/report")
@@ -106,11 +86,7 @@ public class CommentController {
             @PathVariable Long commentId,
             @Valid @RequestBody CommentReportCreateRequest request
     ) {
-        try {
-            return ResponseEntity.ok(ApiResponse.success("Đã gửi báo cáo bình luận",
-                    commentService.reportComment(currentUser.getId(), commentId, request)));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Báo cáo thất bại: " + e.getMessage()));
-        }
+        return ResponseEntity.ok(ApiResponse.success("Comment report submitted successfully",
+                commentService.reportComment(currentUser.getId(), commentId, request)));
     }
 }

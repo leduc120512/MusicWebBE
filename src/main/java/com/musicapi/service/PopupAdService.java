@@ -2,7 +2,6 @@ package com.musicapi.service;
 
 import com.musicapi.model.PopupAd;
 import com.musicapi.repository.PopupAdRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -14,8 +13,12 @@ import java.util.Optional;
 
 @Service
 public class PopupAdService {
-    @Autowired
-    private PopupAdRepository popupAdRepository;
+
+    private final PopupAdRepository popupAdRepository;
+
+    public PopupAdService(PopupAdRepository popupAdRepository) {
+        this.popupAdRepository = popupAdRepository;
+    }
 
     public List<PopupAd> getAll() {
         return popupAdRepository.findAll();

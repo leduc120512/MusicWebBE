@@ -1,5 +1,7 @@
 package com.musicapi.service;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import com.musicapi.dto.SongResponse;
 import com.musicapi.model.PlayHistory;
 import com.musicapi.model.Song;
@@ -9,48 +11,58 @@ import com.musicapi.repository.PlayHistoryRepository;
 import com.musicapi.repository.SongRepository;
 import com.musicapi.repository.UserRepository;
 import com.musicapi.security.UserPrincipal;
-import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
 public class SongService {
 
-    @Autowired
-    private SongRepository songRepository;
-    @Autowired
-    private PlayHistoryRepository playHistoryRepository;
+    private final SongRepository songRepository;
+    private final LikeRepository likeRepository;
+    private final PlayHistoryRepository playHistoryRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private LikeRepository likeRepository;
+    public SongService(
+            SongRepository songRepository,
+            LikeRepository likeRepository,
+            UserRepository userRepository,
+            PlayHistoryRepository playHistoryRepository
+    ) {
+        this.songRepository = songRepository;
+        this.likeRepository = likeRepository;
+        this.userRepository = userRepository;
+        this.playHistoryRepository = playHistoryRepository;
+    }
 
-    @Autowired
-    private UserRepository userRepository;
 
+    @Transactional(readOnly = true)
     public Page<SongResponse> getLatestSongs(int page, int size, UserPrincipal currentUser) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<Song> songs = songRepository.findLatestSongs(pageable);
-        
+
         return songs.map(song -> convertToSongResponse(song, currentUser));
     }
+    @Transactional(readOnly = true)
     public SongResponse createSong(Song song, UserPrincipal currentUser) {
         User artist = userRepository.findById(currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         song.setArtist(artist);
         song.setActive(true);
         song.setTop(true);
         Song saved = songRepository.save(song);
         return convertToSongResponse(saved, currentUser);
     }
+    @Transactional(readOnly = true)
     public SongResponse updateSong(Long id, Song updatedSong, UserPrincipal currentUser) {
         Song song = songRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Song not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Song not found"));
 
         song.setTitle(updatedSong.getTitle());
         song.setDescription(updatedSong.getDescription());
@@ -66,22 +78,24 @@ public class SongService {
     }
     public void deleteSong(Long id, UserPrincipal currentUser) {
         Song song = songRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Song not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Song not found"));
 
         if (!song.getArtist().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("Unauthorized to delete this song");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized to delete this song");
         }
 
         songRepository.delete(song);
     }
 
+    @Transactional(readOnly = true)
     public Page<SongResponse> getPopularSongs(int page, int size, UserPrincipal currentUser) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Song> songs = songRepository.findPopularSongs(pageable);
-        
+
         return songs.map(song -> convertToSongResponse(song, currentUser));
     }
 
+    @Transactional(readOnly = true)
     public Page<SongResponse> getTrendingSongs(int page, int size, UserPrincipal currentUser) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Song> songs = songRepository.findTrendingSongs(pageable);
@@ -89,41 +103,45 @@ public class SongService {
         return songs.map(song -> convertToSongResponse(song, currentUser));
     }
 
+    @Transactional(readOnly = true)
     public Page<SongResponse> getMySongs(UserPrincipal currentUser, int page, int size) {
         if (currentUser == null) {
-            throw new RuntimeException("Unauthorized");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized");
         }
 
         User artist = userRepository.findById(currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<Song> songs = songRepository.findByArtist(artist, pageable);
         return songs.map(song -> convertToSongResponse(song, currentUser));
     }
 
+    @Transactional(readOnly = true)
     public Page<SongResponse> searchSongs(String keyword, int page, int size, UserPrincipal currentUser) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Song> songs = songRepository.searchByTitle(keyword, pageable);
-        
+
         return songs.map(song -> convertToSongResponse(song, currentUser));
     }
     public Song getByIdOrThrow(Long id) {
         return songRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Song not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Song not found"));
     }
 
     public Song save(Song song) {
         return songRepository.save(song);
     }
 
+    @Transactional(readOnly = true)
     public Page<SongResponse> getSongsByGenre(String genreName, int page, int size, UserPrincipal currentUser) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Song> songs = songRepository.findByGenreName(genreName, pageable);
-        
+
         return songs.map(song -> convertToSongResponse(song, currentUser));
     }
 
+    @Transactional(readOnly = true)
     public Page<SongResponse> getSongsByAlbum(Long albumId, int page, int size, UserPrincipal currentUser) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Song> songs = songRepository.findByAlbumId(albumId, pageable);
@@ -133,27 +151,29 @@ public class SongService {
     @Transactional
     public void addPlayHistory(Long songId, Long userId) {
         Song song = songRepository.findById(songId)
-                .orElseThrow(() -> new RuntimeException("Song not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Song not found"));
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         PlayHistory history = new PlayHistory(user, song);
         playHistoryRepository.save(history);
     }
+    @Transactional(readOnly = true)
     public SongResponse getSongById(Long id, UserPrincipal currentUser) {
         Song song = songRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Song not found"));
-        
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Song not found"));
+
         return convertToSongResponse(song, currentUser);
     }
 
+    @Transactional(readOnly = true)
     public SongResponse updateLyrics(Long id, String lyrics, UserPrincipal currentUser) {
         Song song = songRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Song not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Song not found"));
 
         String normalized = lyrics == null ? "" : lyrics.replace("\r\n", "\n").replace("\r", "\n").trim();
         if (normalized.isBlank()) {
-            throw new RuntimeException("Lyrics must not be blank");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lyrics must not be blank");
         }
 
         song.setLyrics(normalized);
@@ -161,6 +181,7 @@ public class SongService {
         return convertToSongResponse(saved, currentUser);
     }
 
+    @Transactional(readOnly = true)
     public  SongResponse convertToSongResponse(Song song, UserPrincipal currentUser) {
         SongResponse response = new SongResponse();
         response.setId(song.getId());
@@ -187,6 +208,7 @@ public class SongService {
 
         return response;
     }
+    @Transactional(readOnly = true)
     public List<SongResponse> getTop5LatestSongs() {
         Pageable limitFive = PageRequest.of(0, 5, Sort.by("createdAt").descending());
         List<Song> songs = songRepository.findTop5LatestSongs(limitFive);
@@ -195,6 +217,7 @@ public class SongService {
                 .map(song -> convertToSongResponse(song, null))
                 .toList();
     }
+    @Transactional(readOnly = true)
     public List<SongResponse> getAllActiveSongs() {
         List<Song> songs = songRepository.findAllActiveSongs();
         return songs.stream()
@@ -202,6 +225,7 @@ public class SongService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public List<SongResponse> searchTopSongs(String keyword) {
 
         keyword = keyword.trim();
@@ -219,8 +243,9 @@ public class SongService {
         });
     }
 
+    @Transactional(readOnly = true)
     public List<SongResponse> getTop5PlayCountSongs() {
-        Pageable topFive = PageRequest.of(0, 5); // lấy 5 bài
+        Pageable topFive = PageRequest.of(0, 5); // take 5 tracks
         List<Song> songs = songRepository.findTop5ByPlayCount(topFive);
 
         return songs.stream()
@@ -228,10 +253,12 @@ public class SongService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public Page<SongResponse> convertToSongResponsePage(Page<Song> songs, UserPrincipal currentUser) {
         return songs.map(song -> convertToSongResponse(song, currentUser));
     }
 
+    @Transactional(readOnly = true)
     public SongResponse convertToSongResponse(Song song) {
         return convertToSongResponse(song, null);
     }

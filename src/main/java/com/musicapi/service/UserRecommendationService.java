@@ -1,5 +1,7 @@
 package com.musicapi.service;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.musicapi.dto.UserRecommendationResponse;
@@ -12,7 +14,6 @@ import com.musicapi.repository.PlayHistoryRepository;
 import com.musicapi.repository.SongRepository;
 import com.musicapi.repository.UserRepository;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -30,17 +31,12 @@ import java.util.stream.Collectors;
 
 @Service
 public class UserRecommendationService {
-    @Autowired
-    private UserRepository userRepository;
 
-    @Autowired
-    private PlayHistoryRepository playHistoryRepository;
+    private final UserRepository userRepository;
+    private final PlayHistoryRepository playHistoryRepository;
+    private final SongRepository songRepository;
+    private final FollowRepository followRepository;
 
-    @Autowired
-    private SongRepository songRepository;
-
-    @Autowired
-    private FollowRepository followRepository;
 
     @Value("${ollama.base-url:http://localhost:11434}")
     private String ollamaBaseUrl;
@@ -51,7 +47,18 @@ public class UserRecommendationService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate;
 
-    public UserRecommendationService() {
+    public UserRecommendationService(
+            UserRepository userRepository,
+            PlayHistoryRepository playHistoryRepository,
+            SongRepository songRepository,
+            FollowRepository followRepository
+    ) {
+        this.userRepository = userRepository;
+        this.playHistoryRepository = playHistoryRepository;
+        this.songRepository = songRepository;
+        this.followRepository = followRepository;
+
+        // Ollama can be slow to answer, so this client gets its own timeouts
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(10000);
         factory.setReadTimeout(45000);
@@ -61,7 +68,7 @@ public class UserRecommendationService {
     @Transactional
     public List<UserRecommendationResponse> recommendUsers(Long userId, int limit, String model) {
         User currentUser = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         int safeLimit = Math.min(Math.max(limit, 1), 20);
 
         List<PlayHistory> history = playHistoryRepository.findRecentHistoryWithSongByUser(
@@ -102,7 +109,7 @@ public class UserRecommendationService {
             CandidateScore candidate = candidates.computeIfAbsent(artist.getId(), id -> new CandidateScore(artist));
             candidate.matchedHistoryCount++;
             candidate.score += 8;
-            candidate.reason = "Bạn nghe nhiều bài của tác giả này";
+            candidate.reason = "You listen to a lot of tracks by this artist";
         }
 
         if (!genreCounts.isEmpty()) {
@@ -119,14 +126,14 @@ public class UserRecommendationService {
                 CandidateScore candidate = candidates.computeIfAbsent(artist.getId(), id -> new CandidateScore(artist));
                 candidate.score += Math.min(genreWeight, 10);
                 if (candidate.reason == null) {
-                    candidate.reason = "Phù hợp với thể loại bạn thường nghe: " + song.getGenre().getName();
+                    candidate.reason = "Matches a genre you listen to often: " + song.getGenre().getName();
                 }
             }
         }
 
         candidates.values().forEach(candidate -> {
             if (candidate.reason == null) {
-                candidate.reason = "Tác giả phù hợp với lịch sử nghe của bạn";
+                candidate.reason = "Artist matching your listening history";
             }
             candidate.score += Math.log10(Math.max(candidate.artist.getId(), 1L));
         });
@@ -138,7 +145,7 @@ public class UserRecommendationService {
             if (author.getId().equals(currentUser.getId())) return;
             CandidateScore candidate = candidates.computeIfAbsent(author.getId(), id -> new CandidateScore(author));
             candidate.score = Math.max(candidate.score, songRepository.sumPlayCountByArtist(author));
-            candidate.reason = "Tác giả đang có nhiều lượt nghe";
+            candidate.reason = "Artist trending by play count";
         });
     }
 
@@ -230,7 +237,7 @@ public class UserRecommendationService {
                 Dựa trên lịch sử nghe và danh sách ứng viên, hãy chọn tối đa %d user phù hợp nhất.
                 Ưu tiên tác giả cùng gu thể loại, tác giả mà user đã nghe nhiều, và tác giả có nội dung gần sở thích.
                 Chỉ trả về JSON hợp lệ theo mẫu:
-                {"recommendations":[{"userId":1,"score":95,"reason":"lý do ngắn"}]}
+                {"recommendations":[{"userId":1,"score":95,"reason":"short reason"}]}
 
                 Lịch sử nghe:
                 %s
@@ -283,7 +290,7 @@ public class UserRecommendationService {
         }
 
         private String reason() {
-            return reason == null ? "Phù hợp với lịch sử nghe của bạn" : reason;
+            return reason == null ? "Matches your listening history" : reason;
         }
     }
 }

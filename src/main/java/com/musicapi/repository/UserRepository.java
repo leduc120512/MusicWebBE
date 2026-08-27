@@ -20,14 +20,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUsernameOrEmail(String username, String email);
     Boolean existsByUsername(String username);
     Boolean existsByEmail(String email);
-    
+
     List<User> findByRole(Role role);
     Page<User> findByRole(Role role, Pageable pageable);
     Long countByRole(Role role);
 
     @Query("SELECT u FROM User u WHERE u.role = :role AND u.active = true")
     List<User> findActiveUsersByRole(@Param("role") Role role);
-    
+
     @Query("SELECT u FROM User u WHERE u.fullName LIKE %:keyword% OR u.username LIKE %:keyword%")
     Page<User> searchUsers(@Param("keyword") String keyword, Pageable pageable);
 }

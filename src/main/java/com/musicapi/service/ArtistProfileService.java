@@ -1,5 +1,7 @@
 package com.musicapi.service;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import com.musicapi.dto.ArtistProfileResponse;
 import com.musicapi.dto.ArtistProfileUpdateRequest;
 import com.musicapi.model.ArtistProfile;
@@ -7,26 +9,30 @@ import com.musicapi.model.Role;
 import com.musicapi.model.User;
 import com.musicapi.repository.*;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ArtistProfileService {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+    private final ArtistProfileRepository artistProfileRepository;
+    private final SongRepository songRepository;
+    private final AlbumRepository albumRepository;
+    private final FollowRepository followRepository;
 
-    @Autowired
-    private ArtistProfileRepository artistProfileRepository;
-
-    @Autowired
-    private SongRepository songRepository;
-
-    @Autowired
-    private AlbumRepository albumRepository;
-
-    @Autowired
-    private FollowRepository followRepository;
+    public ArtistProfileService(
+            UserRepository userRepository,
+            ArtistProfileRepository artistProfileRepository,
+            SongRepository songRepository,
+            AlbumRepository albumRepository,
+            FollowRepository followRepository
+    ) {
+        this.userRepository = userRepository;
+        this.artistProfileRepository = artistProfileRepository;
+        this.songRepository = songRepository;
+        this.albumRepository = albumRepository;
+        this.followRepository = followRepository;
+    }
 
     public ArtistProfileResponse getPublicArtistProfile(Long artistId) {
         User artist = getArtistByIdOrThrow(artistId);
@@ -65,12 +71,12 @@ public class ArtistProfileService {
 
     private User getArtistByIdOrThrow(Long artistId) {
         return userRepository.findById(artistId)
-                .orElseThrow(() -> new RuntimeException("Artist not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Artist not found"));
     }
 
     private void ensureArtistRole(User user) {
         if (user.getRole() != Role.ROLE_AUTHOR && user.getRole() != Role.ROLE_ADMIN) {
-            throw new RuntimeException("Only artists can update artist profile");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only artists can update artist profile");
         }
     }
 

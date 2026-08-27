@@ -1,5 +1,7 @@
 package com.musicapi.service;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import com.musicapi.dto.AdminReviewRequestDto;
 import com.musicapi.dto.CommentCreateRequest;
 import com.musicapi.dto.CommentReportCreateRequest;
@@ -7,7 +9,6 @@ import com.musicapi.dto.CommentReportResponse;
 import com.musicapi.dto.CommentResponse;
 import com.musicapi.model.*;
 import com.musicapi.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -19,21 +20,27 @@ import java.util.Map;
 
 @Service
 public class CommentService {
-    @Autowired
-    private CommentRepository commentRepository;
 
-    @Autowired
-    private CommentReportRepository commentReportRepository;
+    private final CommentRepository commentRepository;
+    private final CommentReportRepository commentReportRepository;
+    private final SongRepository songRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private SongRepository songRepository;
-
-    @Autowired
-    private UserRepository userRepository;
+    public CommentService(
+            CommentRepository commentRepository,
+            CommentReportRepository commentReportRepository,
+            SongRepository songRepository,
+            UserRepository userRepository
+    ) {
+        this.commentRepository = commentRepository;
+        this.commentReportRepository = commentReportRepository;
+        this.songRepository = songRepository;
+        this.userRepository = userRepository;
+    }
 
     public CommentResponse createComment(Long userId, Long songId, CommentCreateRequest request) {
         User user = getUser(userId);
-        Song song = songRepository.findById(songId).orElseThrow(() -> new RuntimeException("Song not found"));
+        Song song = songRepository.findById(songId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Song not found"));
 
         Comment comment = new Comment();
         comment.setUser(user);
@@ -99,7 +106,7 @@ public class CommentService {
     public CommentResponse updateComment(Long userId, Long commentId, CommentCreateRequest request) {
         Comment comment = getComment(commentId);
         if (!comment.getUser().getId().equals(userId)) {
-            throw new RuntimeException("Bạn không có quyền sửa bình luận này");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not allowed to edit this comment");
         }
         comment.setContent(request.getContent().trim());
         return map(commentRepository.save(comment));
@@ -110,17 +117,17 @@ public class CommentService {
         User user = getUser(userId);
 
         if (!comment.getUser().getId().equals(userId) && user.getRole() != Role.ROLE_ADMIN) {
-            throw new RuntimeException("Bạn không có quyền xóa bình luận này");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not allowed to delete this comment");
         }
 
         comment.setDeleted(true);
-        comment.setContent("[Bình luận đã bị ẩn]");
+        comment.setContent("[Comment hidden]");
         commentRepository.save(comment);
     }
 
     public CommentReportResponse reportComment(Long userId, Long commentId, CommentReportCreateRequest request) {
         if (commentReportRepository.existsByCommentIdAndReporterIdAndStatus(commentId, userId, CommentReportStatus.PENDING)) {
-            throw new RuntimeException("Bạn đã report bình luận này và đang chờ xử lý");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "You have already reported this comment and it is awaiting review");
         }
 
         Comment comment = getComment(commentId);
@@ -145,15 +152,15 @@ public class CommentService {
     public CommentReportResponse reviewCommentReport(Long adminId, Long reportId, AdminReviewRequestDto dto) {
         User admin = getUser(adminId);
         if (admin.getRole() != Role.ROLE_ADMIN) {
-            throw new RuntimeException("Chỉ admin mới được xử lý");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only an administrator can resolve this report");
         }
 
         CommentReport report = commentReportRepository.findById(reportId)
-                .orElseThrow(() -> new RuntimeException("Comment report not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment report not found"));
 
         CommentReportStatus status = CommentReportStatus.valueOf(dto.getStatus().trim().toUpperCase());
         if (status != CommentReportStatus.RESOLVED && status != CommentReportStatus.REJECTED) {
-            throw new RuntimeException("Status hợp lệ: RESOLVED hoặc REJECTED");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Status must be RESOLVED or REJECTED");
         }
 
         report.setStatus(status);
@@ -164,7 +171,7 @@ public class CommentService {
         if (Boolean.TRUE.equals(dto.getHideComment())) {
             Comment comment = report.getComment();
             comment.setDeleted(true);
-            comment.setContent("[Bình luận đã bị ẩn bởi quản trị viên]");
+            comment.setContent("[Comment hidden by an administrator]");
             commentRepository.save(comment);
         }
 
@@ -231,10 +238,10 @@ public class CommentService {
     }
 
     private User getUser(Long id) {
-        return userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        return userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
     private Comment getComment(Long id) {
-        return commentRepository.findById(id).orElseThrow(() -> new RuntimeException("Comment not found"));
+        return commentRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found"));
     }
 }

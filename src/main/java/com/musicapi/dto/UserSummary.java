@@ -2,6 +2,7 @@ package com.musicapi.dto;
 
 import com.musicapi.model.Gender;
 import com.musicapi.model.Role;
+import com.musicapi.model.User;
 
 public class UserSummary {
     private Long id;
@@ -20,6 +21,22 @@ public class UserSummary {
         this.avatar = avatar;
         this.gender = gender;
         this.role = role;
+    }
+
+    /**
+     * The only shape a User is ever exposed in. Keeps the password, the
+     * relations and the audit columns out of every response.
+     */
+    public static UserSummary from(User user) {
+        return new UserSummary(
+                user.getId(),
+                user.getUsername(),
+                user.getFullName(),
+                user.getEmail(),
+                user.getAvatar(),
+                user.getGender(),
+                user.getRole()
+        );
     }
 
     // Getters and Setters

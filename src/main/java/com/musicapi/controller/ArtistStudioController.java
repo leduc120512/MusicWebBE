@@ -9,7 +9,7 @@ import com.musicapi.service.ArtistProfileService;
 import com.musicapi.service.DashboardService;
 import com.musicapi.service.SongService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
@@ -18,30 +18,30 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/artist-studio")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "*")@Tag(name = "Artist studio", description = "Self-service area for ROLE_AUTHOR")
 public class ArtistStudioController {
 
-    @Autowired
-    private ArtistProfileService artistProfileService;
+    private final ArtistProfileService artistProfileService;
+    private final ArtistNewsService artistNewsService;
+    private final DashboardService dashboardService;
+    private final SongService songService;
 
-    @Autowired
-    private ArtistNewsService artistNewsService;
-
-    @Autowired
-    private DashboardService dashboardService;
-
-    @Autowired
-    private SongService songService;
+    public ArtistStudioController(
+            ArtistProfileService artistProfileService,
+            ArtistNewsService artistNewsService,
+            DashboardService dashboardService,
+            SongService songService
+    ) {
+        this.artistProfileService = artistProfileService;
+        this.artistNewsService = artistNewsService;
+        this.dashboardService = dashboardService;
+        this.songService = songService;
+    }
 
     @GetMapping("/me/dashboard")
     public ResponseEntity<?> getMyDashboard(@AuthenticationPrincipal UserPrincipal currentUser) {
-        try {
-            return ResponseEntity.ok(ApiResponse.success("My dashboard stats retrieved successfully",
-                    dashboardService.getMyArtistStats(currentUser.getId())));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error retrieving dashboard stats: " + e.getMessage()));
-        }
+        return ResponseEntity.ok(ApiResponse.success("My dashboard stats retrieved successfully",
+                dashboardService.getMyArtistStats(currentUser.getId())));
     }
 
     @GetMapping("/me/songs")
@@ -50,37 +50,22 @@ public class ArtistStudioController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        try {
-            return ResponseEntity.ok(ApiResponse.success("My songs retrieved successfully",
-                    songService.getMySongs(currentUser, page, size)));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error retrieving my songs: " + e.getMessage()));
-        }
+        return ResponseEntity.ok(ApiResponse.success("My songs retrieved successfully",
+                songService.getMySongs(currentUser, page, size)));
     }
 
     @GetMapping("/me/profile")
     public ResponseEntity<?> getMyProfile(@AuthenticationPrincipal UserPrincipal currentUser) {
-        try {
-            return ResponseEntity.ok(ApiResponse.success("My artist profile retrieved successfully",
-                    artistProfileService.getMyArtistProfile(currentUser.getId())));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error retrieving my artist profile: " + e.getMessage()));
-        }
+        return ResponseEntity.ok(ApiResponse.success("My artist profile retrieved successfully",
+                artistProfileService.getMyArtistProfile(currentUser.getId())));
     }
 
     @PutMapping("/me/profile")
     public ResponseEntity<?> updateMyProfile(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @Valid @RequestBody ArtistProfileUpdateRequest request) {
-        try {
-            return ResponseEntity.ok(ApiResponse.success("Artist profile updated successfully",
-                    artistProfileService.upsertMyArtistProfile(currentUser.getId(), request)));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error updating artist profile: " + e.getMessage()));
-        }
+        return ResponseEntity.ok(ApiResponse.success("Artist profile updated successfully",
+                artistProfileService.upsertMyArtistProfile(currentUser.getId(), request)));
     }
 
     @GetMapping("/me/news")
@@ -88,26 +73,16 @@ public class ArtistStudioController {
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        try {
-            Page<?> newsPage = artistNewsService.getMyNews(currentUser.getId(), PageRequest.of(page, size));
-            return ResponseEntity.ok(ApiResponse.success("My artist news retrieved successfully", newsPage));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error retrieving my artist news: " + e.getMessage()));
-        }
+        Page<?> newsPage = artistNewsService.getMyNews(currentUser.getId(), PageRequest.of(page, size));
+        return ResponseEntity.ok(ApiResponse.success("My artist news retrieved successfully", newsPage));
     }
 
     @PostMapping("/me/news")
     public ResponseEntity<?> createMyNews(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @Valid @RequestBody ArtistNewsRequest request) {
-        try {
-            return ResponseEntity.ok(ApiResponse.success("Artist news created successfully",
-                    artistNewsService.createMyNews(currentUser.getId(), request)));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error creating artist news: " + e.getMessage()));
-        }
+        return ResponseEntity.ok(ApiResponse.success("Artist news created successfully",
+                artistNewsService.createMyNews(currentUser.getId(), request)));
     }
 
     @PutMapping("/me/news/{newsId}")
@@ -115,26 +90,16 @@ public class ArtistStudioController {
             @AuthenticationPrincipal UserPrincipal currentUser,
             @PathVariable Long newsId,
             @Valid @RequestBody ArtistNewsRequest request) {
-        try {
-            return ResponseEntity.ok(ApiResponse.success("Artist news updated successfully",
-                    artistNewsService.updateMyNews(currentUser.getId(), newsId, request)));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error updating artist news: " + e.getMessage()));
-        }
+        return ResponseEntity.ok(ApiResponse.success("Artist news updated successfully",
+                artistNewsService.updateMyNews(currentUser.getId(), newsId, request)));
     }
 
     @DeleteMapping("/me/news/{newsId}")
     public ResponseEntity<?> deleteMyNews(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @PathVariable Long newsId) {
-        try {
-            artistNewsService.deleteMyNews(currentUser.getId(), newsId);
-            return ResponseEntity.ok(ApiResponse.success("Artist news deleted successfully", null));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error deleting artist news: " + e.getMessage()));
-        }
+        artistNewsService.deleteMyNews(currentUser.getId(), newsId);
+        return ResponseEntity.ok(ApiResponse.success("Artist news deleted successfully", null));
     }
 }
 

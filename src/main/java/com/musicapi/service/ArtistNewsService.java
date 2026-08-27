@@ -1,5 +1,7 @@
 package com.musicapi.service;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import com.musicapi.dto.ArtistNewsRequest;
 import com.musicapi.dto.ArtistNewsResponse;
 import com.musicapi.model.ArtistNews;
@@ -8,7 +10,6 @@ import com.musicapi.model.User;
 import com.musicapi.repository.ArtistNewsRepository;
 import com.musicapi.repository.UserRepository;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -16,11 +17,13 @@ import org.springframework.stereotype.Service;
 @Service
 public class ArtistNewsService {
 
-    @Autowired
-    private ArtistNewsRepository artistNewsRepository;
+    private final ArtistNewsRepository artistNewsRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private UserRepository userRepository;
+    public ArtistNewsService(ArtistNewsRepository artistNewsRepository, UserRepository userRepository) {
+        this.artistNewsRepository = artistNewsRepository;
+        this.userRepository = userRepository;
+    }
 
     public Page<ArtistNewsResponse> getPublicNews(Long artistId, Pageable pageable) {
         User artist = getArtistOrThrow(artistId);
@@ -31,7 +34,7 @@ public class ArtistNewsService {
     public ArtistNewsResponse getPublicNewsDetail(Long artistId, Long newsId) {
         User artist = getArtistOrThrow(artistId);
         ArtistNews news = artistNewsRepository.findByIdAndArtistAndPublishedTrue(newsId, artist)
-                .orElseThrow(() -> new RuntimeException("News not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "News not found"));
         return mapToResponse(news);
     }
 
@@ -63,7 +66,7 @@ public class ArtistNewsService {
         ensureArtistRole(artist);
 
         ArtistNews news = artistNewsRepository.findByIdAndArtist(newsId, artist)
-                .orElseThrow(() -> new RuntimeException("News not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "News not found"));
         news.setTitle(request.getTitle());
         news.setContent(request.getContent());
         news.setThumbnail(request.getThumbnail());
@@ -80,18 +83,18 @@ public class ArtistNewsService {
         ensureArtistRole(artist);
 
         ArtistNews news = artistNewsRepository.findByIdAndArtist(newsId, artist)
-                .orElseThrow(() -> new RuntimeException("News not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "News not found"));
         artistNewsRepository.delete(news);
     }
 
     private User getArtistOrThrow(Long artistId) {
         return userRepository.findById(artistId)
-                .orElseThrow(() -> new RuntimeException("Artist not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Artist not found"));
     }
 
     private void ensureArtistRole(User user) {
         if (user.getRole() != Role.ROLE_AUTHOR && user.getRole() != Role.ROLE_ADMIN) {
-            throw new RuntimeException("Only artists can manage artist news");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only artists can manage artist news");
         }
     }
 

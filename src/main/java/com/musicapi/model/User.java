@@ -34,7 +34,7 @@ public class User {
 
     @NotBlank
     @Size(max = 100)
-    @JsonIgnore // Ẩn mật khẩu khi trả JSON
+    @JsonIgnore // never serialise the password
     private String password;
 
     @Size(max = 100)

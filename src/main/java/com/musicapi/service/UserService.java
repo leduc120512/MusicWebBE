@@ -1,5 +1,7 @@
 package com.musicapi.service;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import com.musicapi.model.PasswordResetToken;
 import com.musicapi.model.User;
 import com.musicapi.repository.PasswordResetTokenRepository;
@@ -18,21 +20,27 @@ import java.util.UUID;
 @Service
 public class UserService {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+    private final PasswordResetTokenRepository tokenRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JavaMailSender mailSender;
 
-    @Autowired
-    private PasswordResetTokenRepository tokenRepository;
+    public UserService(
+            UserRepository userRepository,
+            PasswordResetTokenRepository tokenRepository,
+            JavaMailSender mailSender,
+            PasswordEncoder passwordEncoder
+    ) {
+        this.userRepository = userRepository;
+        this.tokenRepository = tokenRepository;
+        this.mailSender = mailSender;
+        this.passwordEncoder = passwordEncoder;
+    }
 
-    @Autowired
-    private JavaMailSender mailSender;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder; // ✅ BẮT BUỘC PHẢI CÓ
 
     public String requestPasswordReset(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Email not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Email not found"));
 
         String token = UUID.randomUUID().toString();
         LocalDateTime expiryDate = LocalDateTime.now().plusHours(24);
@@ -73,14 +81,14 @@ public class UserService {
 
     public String resetPassword(String token, String newPassword) {
         PasswordResetToken resetToken = tokenRepository.findByToken(token)
-                .orElseThrow(() -> new RuntimeException("Invalid token"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token"));
 
         if (resetToken.isExpired()) {
-            throw new RuntimeException("Token has expired");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token has expired");
         }
 
         User user = resetToken.getUser();
-        user.setPassword(passwordEncoder.encode(newPassword)); // ✅ HẾT LỖI
+        user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
 
         tokenRepository.delete(resetToken);

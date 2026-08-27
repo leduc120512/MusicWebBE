@@ -1,42 +1,53 @@
 package com.musicapi.controller;
 
 import com.musicapi.dto.ApiResponse;
+import com.musicapi.service.FileStorageService;
 import com.musicapi.model.PopupAd;
 import com.musicapi.service.PopupAdService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/popup-ads")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "*")@Tag(name = "Popup ads", description = "Site-wide popup advertisements")
 public class PopupAdController {
-    private static final String UPLOAD_DIR = "D:/web nhac/duan1/upload/popup";
 
-    @Autowired
-    private PopupAdService popupAdService;
+    private final PopupAdService popupAdService;
+
+    private final FileStorageService fileStorageService;
+
+    public PopupAdController(PopupAdService popupAdService, FileStorageService fileStorageService) {
+        this.popupAdService = popupAdService;
+        this.fileStorageService = fileStorageService;
+    }
+    private static final Logger log = LoggerFactory.getLogger(PopupAdController.class);
+
 
     @GetMapping("/active")
-    public ApiResponse<?> getActivePopup() {
-        return ApiResponse.success("Popup dang hien thi", popupAdService.getActive().orElse(null));
+    public ResponseEntity<?> getActivePopup() {
+        return ResponseEntity.ok(
+                ApiResponse.success("Active popup ad retrieved successfully", popupAdService.getActive().orElse(null)));
     }
 
     @GetMapping
-    public ApiResponse<?> getAll() {
-        return ApiResponse.success("Danh sach popup quang cao", popupAdService.getAll());
+    public ResponseEntity<?> getAll() {
+        return ResponseEntity.ok(ApiResponse.success("Popup ads retrieved successfully", popupAdService.getAll()));
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<?> create(
+    public ResponseEntity<?> create(
             @RequestParam("title") String title,
             @RequestParam(value = "content", required = false) String content,
             @RequestParam(value = "targetUrl", required = false) String targetUrl,
@@ -49,23 +60,20 @@ public class PopupAdController {
             @RequestParam(value = "imageFile", required = false) MultipartFile imageFileAlias,
             @RequestParam(value = "file", required = false) MultipartFile fileAlias
     ) {
-        try {
-            PopupAd popupAd = new PopupAd();
-            popupAd.setTitle(title);
-            popupAd.setContent(content);
-            popupAd.setTargetUrl(targetUrl);
-            popupAd.setActive(active);
-            popupAd.setStartAt(startAt);
-            popupAd.setEndAt(endAt);
-            popupAd.setImage(saveImage(firstFile(imageFile, imageFileAlias, fileAlias)));
-            return ApiResponse.success("Tao popup quang cao thanh cong", popupAdService.create(popupAd));
-        } catch (Exception e) {
-            return ApiResponse.error("Tao popup quang cao that bai: " + e.getMessage());
-        }
+        PopupAd popupAd = new PopupAd();
+        popupAd.setTitle(title);
+        popupAd.setContent(content);
+        popupAd.setTargetUrl(targetUrl);
+        popupAd.setActive(active);
+        popupAd.setStartAt(startAt);
+        popupAd.setEndAt(endAt);
+        popupAd.setImage(fileStorageService.store(firstFile(imageFile, imageFileAlias, fileAlias), "popup"));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Popup ad created successfully", popupAdService.create(popupAd)));
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<?> update(
+    public ResponseEntity<?> update(
             @PathVariable Long id,
             @RequestParam(value = "title", required = false) String title,
             @RequestParam(value = "content", required = false) String content,
@@ -79,27 +87,27 @@ public class PopupAdController {
             @RequestParam(value = "imageFile", required = false) MultipartFile imageFileAlias,
             @RequestParam(value = "file", required = false) MultipartFile fileAlias
     ) {
-        try {
-            PopupAd current = popupAdService.getById(id);
-            PopupAd request = new PopupAd();
-            request.setTitle(title);
-            request.setContent(content);
-            request.setTargetUrl(targetUrl);
-            request.setActive(active == null ? current.isActive() : active);
-            request.setStartAt(startAt == null ? current.getStartAt() : startAt);
-            request.setEndAt(endAt == null ? current.getEndAt() : endAt);
-            String image = saveImage(firstFile(imageFile, imageFileAlias, fileAlias));
-            request.setImage(image == null ? current.getImage() : image);
-            return ApiResponse.success("Cap nhat popup quang cao thanh cong", popupAdService.update(id, request));
-        } catch (Exception e) {
-            return ApiResponse.error("Cap nhat popup quang cao that bai: " + e.getMessage());
-        }
+        // A missing popup surfaces as ResponseStatusException(404) from the service
+        // and is deliberately not caught here, so the caller still gets a 404.
+        PopupAd current = popupAdService.getById(id);
+
+        PopupAd request = new PopupAd();
+        request.setTitle(title);
+        request.setContent(content);
+        request.setTargetUrl(targetUrl);
+        request.setActive(active == null ? current.isActive() : active);
+        request.setStartAt(startAt == null ? current.getStartAt() : startAt);
+        request.setEndAt(endAt == null ? current.getEndAt() : endAt);
+        String image = fileStorageService.store(firstFile(imageFile, imageFileAlias, fileAlias), "popup");
+        request.setImage(image == null ? current.getImage() : image);
+        return ResponseEntity.ok(
+                ApiResponse.success("Popup ad updated successfully", popupAdService.update(id, request)));
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<?> delete(@PathVariable Long id) {
+    public ResponseEntity<?> delete(@PathVariable Long id) {
         popupAdService.delete(id);
-        return ApiResponse.success("Xoa popup quang cao thanh cong", null);
+        return ResponseEntity.ok(ApiResponse.success("Popup ad deleted successfully", null));
     }
 
     private MultipartFile firstFile(MultipartFile... files) {
@@ -111,35 +119,7 @@ public class PopupAdController {
         return null;
     }
 
-    private String saveImage(MultipartFile imageFile) throws Exception {
-        if (imageFile == null || imageFile.isEmpty()) {
-            return null;
-        }
-
-        Path dir = Paths.get(UPLOAD_DIR);
-        Files.createDirectories(dir);
-        String safeName = sanitizeFileName(imageFile.getOriginalFilename());
-        String fileName = resolveUniqueFileName(dir, UUID.randomUUID() + "_" + safeName);
-        Files.copy(imageFile.getInputStream(), dir.resolve(fileName), StandardCopyOption.REPLACE_EXISTING);
-        return "/upload/popup/" + fileName;
-    }
-
-    private String sanitizeFileName(String original) {
-        if (original == null || original.isBlank()) return "popup";
-        int dot = original.lastIndexOf('.');
-        String name = (dot > 0) ? original.substring(0, dot) : original;
-        String ext  = (dot > 0) ? original.substring(dot) : "";
-
-        name = name.replaceAll("[^a-zA-Z0-9-_\\.]", "-")
-                .replaceAll("-{2,}", "-")
-                .toLowerCase();
-        ext = ext.replaceAll("[^a-zA-Z0-9\\.]", "").toLowerCase();
-
-        if (name.isBlank()) name = "popup";
-        return name + ext;
-    }
-
-    private String resolveUniqueFileName(Path dir, String sanitized) {
+private String resolveUniqueFileName(Path dir, String sanitized) {
         int dot = sanitized.lastIndexOf('.');
         String base = (dot > 0) ? sanitized.substring(0, dot) : sanitized;
         String ext  = (dot > 0) ? sanitized.substring(dot) : "";

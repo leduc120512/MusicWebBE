@@ -21,10 +21,10 @@ public interface PlaylistRepository extends JpaRepository<Playlist, Long> {
 
     @EntityGraph(attributePaths = "songs")
     Optional<Playlist> findByIdAndUser_Id(Long id, Long userId);
-    
+
     @Query("SELECT p FROM Playlist p WHERE p.isPublic = true")
     Page<Playlist> findPublicPlaylists(Pageable pageable);
-    
+
     @Query("SELECT p FROM Playlist p WHERE p.name LIKE %:keyword% AND p.isPublic = true")
     Page<Playlist> searchPublicPlaylists(@Param("keyword") String keyword, Pageable pageable);
 }

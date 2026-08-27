@@ -1,141 +1,93 @@
 package com.musicapi.controller;
 
 import com.musicapi.dto.ApiResponse;
-import com.musicapi.dto.SongResponse;
-import com.musicapi.model.Song;
-import com.musicapi.model.User;
-import com.musicapi.repository.PlayHistoryRepository;
-import com.musicapi.repository.SongRepository;
-import com.musicapi.repository.UserRepository;
 import com.musicapi.security.UserPrincipal;
 import com.musicapi.service.PlayHistoryService;
-import com.musicapi.service.SongService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+/**
+ * HTTP layer for listening history. All rules live in {@link PlayHistoryService}.
+ */
 @RestController
 @RequestMapping("/api/history")
 @CrossOrigin(origins = "*")
+@Tag(name = "Play history", description = "What the signed-in user has listened to")
 public class PlayHistoryController {
 
-    @Autowired
-    private PlayHistoryRepository playHistoryRepository;
+    private final PlayHistoryService playHistoryService;
 
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private PlayHistoryService playHistoryService;
-    @Autowired
-    private SongRepository songRepository;
-
-    @Autowired
-    private SongService songService;
+    public PlayHistoryController(PlayHistoryService playHistoryService) {
+        this.playHistoryService = playHistoryService;
+    }
 
     @GetMapping("/recent")
+    @Operation(summary = "Recently played songs, newest first")
     public ResponseEntity<?> getRecentlyPlayed(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @AuthenticationPrincipal UserPrincipal currentUser) {
-        try {
-            User user = userRepository.findById(currentUser.getId())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-
-            Pageable pageable = PageRequest.of(page, size);
-            Page<Song> songs = playHistoryRepository.findRecentlyPlayedByUser(user, pageable);
-
-            Page<SongResponse> response = songService.convertToSongResponsePage(songs, currentUser);
-            return ResponseEntity.ok(ApiResponse.success("Recently played songs retrieved successfully", response));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error retrieving play history: " + e.getMessage()));
-        }
+            @AuthenticationPrincipal UserPrincipal currentUser
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Recently played songs retrieved successfully",
+                playHistoryService.getRecentlyPlayed(currentUser, page, size)));
     }
 
     @GetMapping("/count/song/{songId}")
+    @Operation(summary = "How many times a song has been played, across all users")
     public ResponseEntity<?> countPlaysBySong(@PathVariable Long songId) {
-        try {
-            Song song = songRepository.findById(songId)
-                    .orElseThrow(() -> new RuntimeException("Song not found"));
-            Long count = playHistoryRepository.countPlaysBySong(song);
-            return ResponseEntity.ok(ApiResponse.success("Play count retrieved", count));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error counting song plays: " + e.getMessage()));
-        }
+        return ResponseEntity.ok(ApiResponse.success(
+                "Play count retrieved successfully", playHistoryService.countPlaysBySong(songId)));
     }
 
     @GetMapping("/count/user")
+    @Operation(summary = "How many plays the signed-in caller has recorded")
     public ResponseEntity<?> countPlaysByUser(@AuthenticationPrincipal UserPrincipal currentUser) {
-        try {
-            User user = userRepository.findById(currentUser.getId())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-            Long count = playHistoryRepository.countPlaysByUser(user);
-            return ResponseEntity.ok(ApiResponse.success("User play count retrieved", count));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error counting user plays: " + e.getMessage()));
-        }
+        return ResponseEntity.ok(ApiResponse.success(
+                "User play count retrieved successfully",
+                playHistoryService.countPlaysByUser(currentUser.getId())));
     }
 
-
     @DeleteMapping("/clear")
-    public ResponseEntity<?> clearUserHistory(@AuthenticationPrincipal UserPrincipal currentUser) {
-        try {
-            User user = userRepository.findById(currentUser.getId())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-            playHistoryService.deleteAllByUser(user);
-            return ResponseEntity.ok(ApiResponse.success("Play history cleared", null));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Error clearing play history: " + e.getMessage()));
-        }
+    @Operation(summary = "Delete the caller's entire listening history")
+    public ResponseEntity<?> clearHistory(@AuthenticationPrincipal UserPrincipal currentUser) {
+        playHistoryService.clearHistory(currentUser.getId());
+        return ResponseEntity.ok(ApiResponse.success("Play history cleared successfully", null));
     }
 
     @DeleteMapping("/remove")
-    public ResponseEntity<?> removeSongFromHistory(
-            @RequestParam Long songId,
-            @AuthenticationPrincipal UserPrincipal currentUser) {
-        try {
-            User user = userRepository.findById(currentUser.getId())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-            Song song = songRepository.findById(songId)
-                    .orElseThrow(() -> new RuntimeException("Song not found"));
-            playHistoryService.deleteByUserAndSong(user, song);
-            return ResponseEntity.ok(ApiResponse.success("Song removed from play history", null));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Error removing song: " + e.getMessage()));
-        }
+    @Operation(summary = "Remove one song from the caller's history")
+    public ResponseEntity<?> removeSong(
+            @RequestParam Long songId, @AuthenticationPrincipal UserPrincipal currentUser) {
+        playHistoryService.removeSong(currentUser.getId(), songId);
+        return ResponseEntity.ok(ApiResponse.success("Song removed from play history", null));
     }
 
     @PutMapping("/update/{historyId}")
+    @Operation(summary = "Repoint or re-time one history entry (maintenance)")
     public ResponseEntity<?> updatePlayHistory(
             @PathVariable Long historyId,
             @RequestParam(required = false) Long newSongId,
-            @RequestParam(required = false) String newPlayedAt // ISO-8601: 2025-07-29T10:00
+            @RequestParam(required = false) String newPlayedAt
     ) {
-        try {
-            Song newSong = null;
-            if (newSongId != null) {
-                newSong = songRepository.findById(newSongId)
-                        .orElseThrow(() -> new RuntimeException("Song not found"));
-            }
+        LocalDateTime playedAt = newPlayedAt == null
+                ? null
+                : LocalDateTime.parse(newPlayedAt, DateTimeFormatter.ISO_DATE_TIME);
 
-            LocalDateTime playedAt = null;
-            if (newPlayedAt != null) {
-                playedAt = LocalDateTime.parse(newPlayedAt, DateTimeFormatter.ISO_DATE_TIME);
-            }
-
-            playHistoryService.updatePlayHistory(historyId, newSong, playedAt);
-            return ResponseEntity.ok(ApiResponse.success("Play history updated", null));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Error updating play history: " + e.getMessage()));
-        }
+        playHistoryService.updatePlayHistory(historyId, newSongId, playedAt);
+        return ResponseEntity.ok(ApiResponse.success("Play history updated successfully", null));
     }
 }

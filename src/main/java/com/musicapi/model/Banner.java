@@ -20,7 +20,7 @@ public class Banner {
     @CreationTimestamp
     private LocalDateTime createdAt;
 
-    // Constructor mặc định
+    // Default constructor required by JPA
     public Banner() {}
 
     // Getters & Setters

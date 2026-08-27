@@ -22,7 +22,7 @@ public class PlayHistory {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     @NotNull
-    @JsonIgnore // Ngăn trả user → playHistory → user → ...
+    @JsonIgnore // Breaks the user -> playHistory -> user serialisation cycle
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)

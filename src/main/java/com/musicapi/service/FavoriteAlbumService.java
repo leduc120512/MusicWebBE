@@ -1,5 +1,7 @@
 package com.musicapi.service;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import com.musicapi.dto.FavoriteAlbumRequest;
 import com.musicapi.dto.FavoriteAlbumResponse;
 import com.musicapi.dto.SongResponse;
@@ -11,7 +13,6 @@ import com.musicapi.repository.SongRepository;
 import com.musicapi.repository.UserRepository;
 import com.musicapi.security.UserPrincipal;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -19,17 +20,23 @@ import java.util.List;
 
 @Service
 public class FavoriteAlbumService {
-    @Autowired
-    private PlaylistRepository playlistRepository;
 
-    @Autowired
-    private SongRepository songRepository;
+    private final PlaylistRepository playlistRepository;
+    private final SongRepository songRepository;
+    private final UserRepository userRepository;
+    private final SongService songService;
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private SongService songService;
+    public FavoriteAlbumService(
+            PlaylistRepository playlistRepository,
+            SongRepository songRepository,
+            UserRepository userRepository,
+            SongService songService
+    ) {
+        this.playlistRepository = playlistRepository;
+        this.songRepository = songRepository;
+        this.userRepository = userRepository;
+        this.songService = songService;
+    }
 
     @Transactional
     public List<FavoriteAlbumResponse> getMyFavoriteAlbums(UserPrincipal currentUser) {
@@ -51,7 +58,7 @@ public class FavoriteAlbumService {
         requireLogin(currentUser);
         String name = request == null ? null : request.getName();
         if (name == null || name.trim().isEmpty()) {
-            throw new RuntimeException("Favorite album name must not be blank");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Favorite album name must not be blank");
         }
 
         Playlist playlist = new Playlist(name.trim(), getUser(currentUser.getId()));
@@ -79,9 +86,9 @@ public class FavoriteAlbumService {
     public FavoriteAlbumResponse addSong(Long albumId, Long songId, UserPrincipal currentUser) {
         Playlist playlist = getOwnedPlaylist(albumId, currentUser);
         Song song = songRepository.findById(songId)
-                .orElseThrow(() -> new RuntimeException("Song not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Song not found"));
         if (!song.isActive()) {
-            throw new RuntimeException("Song is not active");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Song is not active");
         }
         playlist.getSongs().add(song);
         return toResponse(playlistRepository.save(playlist), currentUser, true);
@@ -102,17 +109,17 @@ public class FavoriteAlbumService {
     private Playlist getOwnedPlaylist(Long albumId, UserPrincipal currentUser) {
         requireLogin(currentUser);
         return playlistRepository.findByIdAndUser_Id(albumId, currentUser.getId())
-                .orElseThrow(() -> new RuntimeException("Favorite album not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Favorite album not found"));
     }
 
     private User getUser(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
     private void requireLogin(UserPrincipal currentUser) {
         if (currentUser == null) {
-            throw new RuntimeException("Unauthorized");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized");
         }
     }
 

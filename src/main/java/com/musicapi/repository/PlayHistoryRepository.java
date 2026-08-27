@@ -29,7 +29,7 @@ public interface PlayHistoryRepository extends JpaRepository<PlayHistory, Long> 
     @Query("SELECT ph FROM PlayHistory ph JOIN FETCH ph.song s LEFT JOIN FETCH s.genre LEFT JOIN FETCH s.artist WHERE ph.user = :user ORDER BY ph.playedAt DESC")
     List<PlayHistory> findRecentHistoryWithSongByUser(@Param("user") User user, Pageable pageable);
 
-    // 🆕 Thêm để hỗ trợ DELETE
+    // supports DELETE
     @Transactional
     void deleteByUser(User user);
 

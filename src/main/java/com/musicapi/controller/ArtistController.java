@@ -3,7 +3,7 @@ package com.musicapi.controller;
 import com.musicapi.dto.ApiResponse;
 import com.musicapi.service.ArtistNewsService;
 import com.musicapi.service.ArtistProfileService;
-import org.springframework.beans.factory.annotation.Autowired;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
@@ -11,24 +11,21 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/artists")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "*")@Tag(name = "Artists (public)", description = "Public artist profiles and news")
 public class ArtistController {
 
-    @Autowired
-    private ArtistProfileService artistProfileService;
+    private final ArtistProfileService artistProfileService;
+    private final ArtistNewsService artistNewsService;
 
-    @Autowired
-    private ArtistNewsService artistNewsService;
+    public ArtistController(ArtistProfileService artistProfileService, ArtistNewsService artistNewsService) {
+        this.artistProfileService = artistProfileService;
+        this.artistNewsService = artistNewsService;
+    }
 
     @GetMapping("/{artistId}/profile")
     public ResponseEntity<?> getArtistProfile(@PathVariable Long artistId) {
-        try {
-            return ResponseEntity.ok(ApiResponse.success("Artist profile retrieved successfully",
-                    artistProfileService.getPublicArtistProfile(artistId)));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error retrieving artist profile: " + e.getMessage()));
-        }
+        return ResponseEntity.ok(ApiResponse.success("Artist profile retrieved successfully",
+                artistProfileService.getPublicArtistProfile(artistId)));
     }
 
     @GetMapping("/{artistId}/news")
@@ -36,26 +33,16 @@ public class ArtistController {
             @PathVariable Long artistId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        try {
-            Page<?> newsPage = artistNewsService.getPublicNews(artistId, PageRequest.of(page, size));
-            return ResponseEntity.ok(ApiResponse.success("Artist news retrieved successfully", newsPage));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error retrieving artist news: " + e.getMessage()));
-        }
+        Page<?> newsPage = artistNewsService.getPublicNews(artistId, PageRequest.of(page, size));
+        return ResponseEntity.ok(ApiResponse.success("Artist news retrieved successfully", newsPage));
     }
 
     @GetMapping("/{artistId}/news/{newsId}")
     public ResponseEntity<?> getArtistNewsDetail(
             @PathVariable Long artistId,
             @PathVariable Long newsId) {
-        try {
-            return ResponseEntity.ok(ApiResponse.success("Artist news detail retrieved successfully",
-                    artistNewsService.getPublicNewsDetail(artistId, newsId)));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error retrieving artist news detail: " + e.getMessage()));
-        }
+        return ResponseEntity.ok(ApiResponse.success("Artist news detail retrieved successfully",
+                artistNewsService.getPublicNewsDetail(artistId, newsId)));
     }
 }
 

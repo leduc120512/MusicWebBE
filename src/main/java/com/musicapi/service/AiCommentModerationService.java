@@ -1,5 +1,7 @@
 package com.musicapi.service;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.musicapi.dto.AiCommentModerationResult;
@@ -9,11 +11,11 @@ import com.musicapi.model.Role;
 import com.musicapi.model.User;
 import com.musicapi.repository.CommentRepository;
 import com.musicapi.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
@@ -24,11 +26,10 @@ import java.util.Map;
 
 @Service
 public class AiCommentModerationService {
-    @Autowired
-    private CommentRepository commentRepository;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final CommentRepository commentRepository;
+    private final UserRepository userRepository;
+
 
     @Value("${ollama.base-url:http://localhost:11434}")
     private String ollamaBaseUrl;
@@ -39,17 +40,22 @@ public class AiCommentModerationService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate;
 
-    public AiCommentModerationService() {
+    public AiCommentModerationService(CommentRepository commentRepository, UserRepository userRepository) {
+        this.commentRepository = commentRepository;
+        this.userRepository = userRepository;
+
+        // Ollama can be slow to answer, so this client gets its own timeouts
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(15000);
         factory.setReadTimeout(45000);
         this.restTemplate = new RestTemplate(factory);
     }
 
+    @Transactional(readOnly = true)
     public AiCommentModerationScanResponse scanAndDelete(Long adminId, int limit, String model) {
-        User admin = userRepository.findById(adminId).orElseThrow(() -> new RuntimeException("User not found"));
+        User admin = userRepository.findById(adminId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         if (admin.getRole() != Role.ROLE_ADMIN) {
-            throw new RuntimeException("Chỉ admin mới được quét và xóa bình luận");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only an administrator can run the comment scan");
         }
 
         int safeLimit = Math.min(Math.max(limit, 1), 100);
@@ -67,7 +73,7 @@ public class AiCommentModerationService {
                 comment.setDeleted(true);
                 comment.setAiModerationReason(result.getReason());
                 comment.setAiModeratedAt(LocalDateTime.now());
-                comment.setContent("[Bình luận đã bị xóa do vi phạm tiêu chuẩn cộng đồng]");
+                comment.setContent("[Comment removed for violating the community guidelines]");
                 commentRepository.save(comment);
                 result.setDeleted(true);
                 deleted++;
@@ -94,7 +100,7 @@ public class AiCommentModerationService {
                 Hãy xác định bình luận có vi phạm tiêu chuẩn cộng đồng hay không.
                 Vi phạm gồm: spam/quảng cáo rác, xúc phạm hoặc quấy rối, thù ghét, đe dọa bạo lực, tình dục không phù hợp, nội dung tự hại, lộ thông tin cá nhân, nội dung bất hợp pháp.
                 Chỉ trả về JSON hợp lệ theo mẫu:
-                {"violates":true,"reason":"lý do ngắn"}
+                {"violates":true,"reason":"short reason"}
                 hoặc
                 {"violates":false,"reason":"ok"}
 
@@ -125,7 +131,7 @@ public class AiCommentModerationService {
             return result;
         } catch (Exception e) {
             result.setViolates(false);
-            result.setReason("Ollama error: " + e.getMessage());
+            result.setReason("Ollama error");
             return result;
         }
     }

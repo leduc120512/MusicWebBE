@@ -1,10 +1,36 @@
-HELP.md
+### Build output ###
 target/
-.mvn/wrapper/maven-wrapper.jar
+build/
 !**/src/main/**/target/
 !**/src/test/**/target/
+!**/src/main/**/build/
+!**/src/test/**/build/
+HELP.md
+.mvn/wrapper/maven-wrapper.jar
 
-### STS ###
+### Local config & secrets ###
+application-local.properties
+src/main/resources/application-local.properties
+.env
+*.env.local
+
+### Uploaded media (served from disk, not versioned) ###
+upload/
+uploads/
+
+### Scratch / archives ###
+*.zip
+tmp_*
+*.tmp
+*.log
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### Eclipse / STS ###
 .apt_generated
 .classpath
 .factorypath
@@ -13,21 +39,16 @@ target/
 .springBeans
 .sts4-cache
 
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
 
 ### VS Code ###
 .vscode/
+
+### OS ###
+Thumbs.db
+.DS_Store
